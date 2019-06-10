@@ -9,13 +9,11 @@ LOCAL_MULTILIB := 64
 
 LOCAL_SRC_FILES := \
 inference-engine/src/inference_engine/precision_utils.cpp \
-inference-engine/src/inference_engine/ie_blob.cpp \
 inference-engine/src/inference_engine/ie_blob_common.cpp \
 inference-engine/src/inference_engine/ie_utils.cpp \
 inference-engine/src/inference_engine/ade_util.cpp \
 inference-engine/src/inference_engine/cpu_detector.cpp \
 inference-engine/src/inference_engine/network_serializer.cpp \
-inference-engine/src/inference_engine/ie_layers.cpp \
 inference-engine/src/inference_engine/ie_device.cpp \
 inference-engine/src/inference_engine/ie_network.cpp \
 inference-engine/src/inference_engine/ie_util_internal.cpp \
@@ -131,7 +129,7 @@ LOCAL_C_INCLUDES += \
 	#$(LOCAL_PATH)/../../../../../../../external/clang/lib/Headers
 
 
-LOCAL_CFLAGS += -DIE_THREAD=IE_THREAD_OMP -DIMPLEMENT_INFERENCE_ENGINE_API -DGAPI_STANDALONE -std=c++11  -Wall -Wno-unknown-pragmas -Wno-strict-overflow -fPIC -Wformat -Wformat-security -fstack-protector-all -msse4.2
+LOCAL_CFLAGS += -DIE_THREAD=IE_THREAD_OMP -DIMPLEMENT_INFERENCE_ENGINE_API -DGAPI_STANDALONE -DCI_BUILD_NUMBER='""' -DIE_BUILD_POSTFIX='""' -std=c++11  -Wall -Wno-unknown-pragmas -Wno-strict-overflow -fPIC -Wformat -Wformat-security -fstack-protector-all -msse4.2
 LOCAL_CFLAGS += -Wno-unused-variable -Wno-unused-parameter -Wno-non-virtual-dtor -Wno-missing-field-initializers  -fexceptions -frtti -Wno-error
 LOCAL_CFLAGS += -DENABLE_MKL_DNN -D__ANDROID__ -DNDEBUG -DIMPLEMENT_INFERENCE_ENGINE_API -fvisibility=default -std=gnu++11 -D_FORTIFY_SOURCE=2 -fPIE -DUSE_STATIC_IE
 #LOCAL_CFLAGS += -DNNLOG

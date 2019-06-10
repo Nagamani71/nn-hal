@@ -185,13 +185,6 @@ TensorDims dimsToShape(const std::vector<uint32_t>& dims, Layout layout) {
             c = dims[3];
             shape = {n, c, h, w};
             break;
-        case IHWO:
-            n = dims[3];
-            c = dims[0];
-            h = dims[1];
-            w = dims[2];
-            shape = {n, c, h, w};
-            break;
         case C:
             n = dims[0];
             shape = {n};
@@ -243,9 +236,6 @@ std::vector<uint32_t>& shapeToDims(const TensorDims& shape, Layout layout) {
             break;
         case NHWC:
             dims = {n, h, w, c};
-            break;
-        case IHWO:
-            dims = {c, h, w, n};
             break;
         default:
             VLOG(L1, "unsupported layout %d", layout);

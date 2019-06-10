@@ -794,22 +794,6 @@ static IRLayer create(const OutputPort &src, const std::string &type)
         layer = std::make_shared<InferenceEngine::ReLULayer>(prm);
         layer->type = "ReLU";
     }
-    else if((strncasecmp(type.c_str(), "tanh", type.size()) == 0))
-    {
-        InferenceEngine::LayerParams prm;
-        prm.precision = g_layer_precision;
-        prm.name = name;
-        layer = std::make_shared<InferenceEngine::TanHLayer>(prm);
-        layer->type = "TanH";
-    }
-    else if((strncasecmp(type.c_str(), "sigmoid", type.size()) == 0))
-    {
-        InferenceEngine::LayerParams prm;
-        prm.precision = g_layer_precision;
-        prm.name = name;
-        layer = std::make_shared<InferenceEngine::SigmoidLayer>(prm);
-        layer->type = "Sigmoid";
-    }
     else
     {
         InferenceEngine::LayerParams prm;

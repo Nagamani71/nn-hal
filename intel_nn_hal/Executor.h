@@ -121,7 +121,7 @@ public:
            IRBuilder::g_layer_precision = InferenceEngine::Precision::UNSPECIFIED;
     }
 
-    ~Executor() {deinitialize();}
+    virtual ~Executor()  {deinitialize(); }
     //bool initialize();
     // Executes the model. The results will be stored at the locations
     // specified in the constructor.

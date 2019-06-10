@@ -28,7 +28,7 @@ namespace neuralnetworks {
 namespace V1_0 {
 namespace driver {
 
-using ::android::hardware::neuralnetworks::V1_0::IDevice;
+using android::hardware::neuralnetworks::V1_0::IDevice;
 // Base class used to create vpu drivers for the NN HAL.  This class
 // provides some implementation of the more common functions.
 //
@@ -39,7 +39,7 @@ public:
     Driver() {}
     Driver(const char* name) : mName(name) {}
 
-    ~Driver() override {}
+    ~Driver() = default;
     Return<ErrorStatus> prepareModel(const Model& model,
                                      const sp<IPreparedModelCallback>& callback) override;
     Return<DeviceStatus> getStatus() override;
