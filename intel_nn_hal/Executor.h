@@ -107,12 +107,12 @@ bool setRunTimePoolInfosFromHidlMemories(std::vector<RunTimePoolInfo>* poolInfos
 class Executor {
 public:
     Executor()
-          :mTargetDevice(TargetDevice::eMYRIAD), mNet("nnNet") {
+          :mTargetDevice(TargetDevice::eMYRIAD), mNet("nnNet"), enginePtr(nullptr) {
         IRBuilder::g_layer_precision = InferenceEngine::Precision::FP16;
     }
 
     Executor(const TargetDevice device)
-          :mTargetDevice(device), mNet("nnNet") {
+          :mTargetDevice(device), mNet("nnNet"), enginePtr(nullptr) {
         if (mTargetDevice == TargetDevice::eCPU)
            IRBuilder::g_layer_precision = InferenceEngine::Precision::FP32;
         else if (mTargetDevice == TargetDevice::eMYRIAD)
@@ -235,8 +235,6 @@ public:
     ~PreparedModel() override {}
     bool initialize();
     static bool isOperationSupported(const Operation& operation, const Model& model);
-    static bool validModel(const Model& model);
-    static bool validateRequest(const Request& request, const Model& model);
     Return<ErrorStatus> execute(const Request& request,
                                 const sp<IExecutionCallback>& callback) override;
 
