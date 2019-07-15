@@ -80,7 +80,6 @@ inference-engine/src/inference_engine/builders/ie_reorg_yolo_layer.cpp \
 inference-engine/src/inference_engine/builders/ie_sigmoid_layer.cpp \
 inference-engine/src/inference_engine/builders/ie_permute_layer.cpp \
 inference-engine/src/inference_engine/builders/ie_relu_layer.cpp \
-inference-engine/src/inference_engine/builders/ie_layer_fragment.cpp \
 inference-engine/src/inference_engine/builders/ie_fully_connected_layer.cpp \
 inference-engine/src/inference_engine/builders/ie_convolution_layer.cpp \
 inference-engine/src/inference_engine/builders/ie_detection_output_layer.cpp \
@@ -96,9 +95,17 @@ inference-engine/src/inference_engine/shape_infer/ie_reshaper.cpp \
 inference-engine/src/inference_engine/cpu_x86_sse42/ie_preprocess_data_sse42.cpp \
 inference-engine/src/inference_engine/cpu_x86_sse42/blob_transform_sse42.cpp \
 inference-engine/src/inference_engine/shape_infer/built-in/ie_built_in_holder.cpp \
+inference-engine/src/inference_engine/shape_infer/const_infer/ie_const_infer_holder.cpp \
+inference-engine/src/inference_engine/shape_infer/const_infer/ie_const_infer_impl.cpp \
+inference-engine/src/inference_engine/builders/ie_layer_decorator.cpp \
+inference-engine/src/inference_engine/builders/ie_gru_sequence_layer.cpp \
+inference-engine/src/inference_engine/builders/ie_lrn_layer.cpp \
+inference-engine/src/inference_engine/ie_cnn_layer_builder.cpp \
+inference-engine/src/inference_engine/builders/ie_resample_layer.cpp \
+inference-engine/src/inference_engine/builders/ie_rnn_sequence_layer.cpp \
 
 
-
+#LOCAL_STATIC_LIBRARIES := libomp
 
 LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/inference-engine/include \
@@ -122,16 +129,18 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/inference-engine/src/inference_engine/cpu_x86_sse42 \
 	$(LOCAL_PATH)/inference-engine/src/inference_engine/shape_infer \
 	$(LOCAL_PATH)/inference-engine/src/inference_engine/shape_infer/built-in \
+	$(LOCAL_PATH)/inference-engine/src/inference_engine/shape_infer/const_infer \
 	$(LOCAL_PATH)/inference-engine/thirdparty/pugixml/src \
 	$(LOCAL_PATH)/../ade/sources/ade/include \
 	$(LOCAL_PATH)/inference-engine/thirdparty/mkl-dnn/src/cpu/xbyak \
-	$(LOCAL_PATH)/inference-engine/thirdparty/fluid/modules/gapi/include
+	$(LOCAL_PATH)/inference-engine/thirdparty/fluid/modules/gapi/include \
+	$(LOCAL_PATH)/inference-engine/include/builders \
 	#$(LOCAL_PATH)/../../../../../../../external/clang/lib/Headers
 
 
 LOCAL_CFLAGS += -DIE_THREAD=IE_THREAD_OMP -DIMPLEMENT_INFERENCE_ENGINE_API -DGAPI_STANDALONE -DCI_BUILD_NUMBER='""' -DIE_BUILD_POSTFIX='""' -std=c++11  -Wall -Wno-unknown-pragmas -Wno-strict-overflow -fPIC -Wformat -Wformat-security -fstack-protector-all -msse4.2
-LOCAL_CFLAGS += -Wno-unused-variable -Wno-unused-parameter -Wno-non-virtual-dtor -Wno-missing-field-initializers  -fexceptions -frtti -Wno-error
-LOCAL_CFLAGS += -DENABLE_MKL_DNN -D__ANDROID__ -DNDEBUG -DIMPLEMENT_INFERENCE_ENGINE_API -fvisibility=default -std=gnu++11 -D_FORTIFY_SOURCE=2 -fPIE -DUSE_STATIC_IE
+LOCAL_CFLAGS += -Wno-unused-variable -Wno-unused-parameter -Wno-non-virtual-dtor -Wno-missing-field-initializers -fexceptions -frtti -Wno-error
+LOCAL_CFLAGS += -DENABLE_MKL_DNN=ON -DTHREADING=TBB -D__ANDROID__ -DNDEBUG -DIMPLEMENT_INFERENCE_ENGINE_API -fvisibility=default -std=gnu++11 -D_FORTIFY_SOURCE=2 -fPIE -DUSE_STATIC_IE
 #LOCAL_CFLAGS += -DNNLOG
 
 

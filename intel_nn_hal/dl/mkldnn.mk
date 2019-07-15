@@ -54,7 +54,11 @@ LOCAL_CFLAGS += \
 			-D__STDC_LIMIT_MACROS \
 			-Dmkldnn_EXPORTS \
 			-fopenmp \
-			-frtti
+			-frtti \
+			-DMKLDNN_VERSION_MAJOR=0 \
+			-DMKLDNN_VERSION_MINOR=18 \
+			-DMKLDNN_VERSION_PATCH=0 \
+			-DMKLDNN_VERSION_HASH='""' \
 LOCAL_STATIC_LIBRARIES := libomp
 
 LOCAL_SRC_FILES += \
@@ -75,21 +79,17 @@ inference-engine/thirdparty/mkl-dnn/src/cpu/jit_avx512_core_fp32_wino_conv_4x3.c
 inference-engine/thirdparty/mkl-dnn/src/cpu/cpu_concat.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/gemm_convolution.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_reorder_utils.cpp \
-inference-engine/thirdparty/mkl-dnn/src/cpu/jit_avx512_core_u8s8s32x_deconvolution.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_depthwise.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/cpu_reorder.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_avx512_common_conv_winograd_kernel_f32.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_dw_conv_kernel_f32.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/ref_batch_normalization.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_x8s8s32x_dw_convolution.cpp \
-inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_x8s8s32x_1x1_conv_kernel.cpp \
-inference-engine/thirdparty/mkl-dnn/src/cpu/ref_rnn.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/ref_deconvolution.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/gemm_convolution_utils.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/ref_shuffle.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_avx2_1x1_convolution.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_avx512_core_u8s8s32x_wino_convolution.cpp \
-inference-engine/thirdparty/mkl-dnn/src/cpu/jit_avx512_core_i8i8_pooling.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/simple_sum.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_avx512_core_x8s8s32x_1x1_conv_kernel.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_avx512_common_lrn.cpp \
@@ -113,8 +113,6 @@ inference-engine/thirdparty/mkl-dnn/src/cpu/cpu_engine.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_softmax_kernel_f32.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_avx512_core_x8s8s32x_conv_kernel.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/cpu_batch_normalization_utils.cpp \
-inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_x8s8s32x_1x1_convolution.cpp \
-inference-engine/thirdparty/mkl-dnn/src/cpu/gemm_u8s8s32x_inner_product.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_pool_kernel_f32.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/ref_lrn.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_avx512_common_conv_kernel.cpp \
@@ -137,11 +135,9 @@ inference-engine/thirdparty/mkl-dnn/src/cpu/jit_avx2_conv_kernel_f32.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_sse42_1x1_convolution.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_reorder.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/ref_inner_product.cpp \
-inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/jit_avx_gemm_f32.cpp \
-inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/jit_avx512_common_gemm_f32.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/f32/jit_avx_gemm_f32.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/f32/jit_avx512_common_gemm_f32.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/gemm.cpp \
-inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/gemm_utils.cpp \
-inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/ref_gemm.cpp \
 inference-engine/thirdparty/mkl-dnn/src/common/deconvolution.cpp \
 inference-engine/thirdparty/mkl-dnn/src/common/rnn.cpp \
 inference-engine/thirdparty/mkl-dnn/src/common/shuffle.cpp \
@@ -150,7 +146,6 @@ inference-engine/thirdparty/mkl-dnn/src/common/query.cpp \
 inference-engine/thirdparty/mkl-dnn/src/common/primitive_iterator.cpp \
 inference-engine/thirdparty/mkl-dnn/src/common/reorder.cpp \
 inference-engine/thirdparty/mkl-dnn/src/common/verbose.cpp \
-inference-engine/thirdparty/mkl-dnn/src/common/convolution_relu.cpp \
 inference-engine/thirdparty/mkl-dnn/src/common/pooling.cpp \
 inference-engine/thirdparty/mkl-dnn/src/common/stream.cpp \
 inference-engine/thirdparty/mkl-dnn/src/common/softmax.cpp \
@@ -168,7 +163,44 @@ inference-engine/thirdparty/mkl-dnn/src/common/memory_desc_wrapper.cpp \
 inference-engine/thirdparty/mkl-dnn/src/common/mkldnn_debug.cpp \
 inference-engine/thirdparty/mkl-dnn/src/common/depthwise.cpp \
 inference-engine/thirdparty/mkl-dnn/src/common/utils.cpp \
-inference-engine/thirdparty/mkl-dnn/src/common/batch_normalization.cpp
+inference-engine/thirdparty/mkl-dnn/src/common/batch_normalization.cpp \
+inference-engine/thirdparty/mkl-dnn/src/common/convolution_pd.cpp \
+inference-engine/thirdparty/mkl-dnn/src/common/binary_convolution.cpp \
+inference-engine/thirdparty/mkl-dnn/src/common/binarization.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/ref_binary_convolution.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/ref_binarization.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_planar_convolution.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_planar_conv_kernel_f32.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_binary_convolution.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_binarization.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/jit_uni_bin_conv_kernel.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/jit_sse42_i8i8_pooling.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/jit_avx512_core_x8s8s32x_deconvolution.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm_x8s8s32x_inner_product.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/cpu_primitive.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/rnn/rnn_utils.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/rnn/ref_rnn.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/rnn/cell_rnn.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/rnn/cell_lstm.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/rnn/cell_gru.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/rnn/cell_gru_lbr.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/rnn/cell_common.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/ref_gemm_s8x8s32.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_u8_copy_sum_bt_kern.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_u8_copy_sum_bn_kern.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_u8_copy_sum_at_kern.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_u8_copy_sum_an_kern.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_u8_copy_bt_kern.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_u8_copy_bn_kern.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_u8_copy_at_kern.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_u8_copy_an_kern.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_kernel_gemv_s8u8s32_kern.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_gemv_s8u8s32.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_gemm_s8u8s32.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_gemm_s8u8s32_kern.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/s8x8s32/jit_avx512_core_gemm_s8s8s32.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/f32/ref_gemm_f32.cpp \
+inference-engine/thirdparty/mkl-dnn/src/cpu/gemm/f32/gemm_utils_f32.cpp \
 
 
 include $(BUILD_SHARED_LIBRARY)

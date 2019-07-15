@@ -44,7 +44,8 @@ LOCAL_CFLAGS += \
 	-Wno-unused-parameter \
 	-Wno-non-virtual-dtor \
 	-Wno-missing-field-initializers \
-	-D_FORTIFY_SOURCE=2
+	-D_FORTIFY_SOURCE=2 \
+	-DCI_BUILD_NUMBER='""'
 
 LOCAL_CFLAGS += \
 	-DENABLE_MKL_DNN \
@@ -107,6 +108,8 @@ inference-engine/src/mkldnn_plugin/nodes/mkldnn_tile_node.cpp \
 inference-engine/src/mkldnn_plugin/utils/blob_dump.cpp \
 inference-engine/src/mkldnn_plugin/mkldnn/iml_type_mapper.cpp \
 inference-engine/src/mkldnn_plugin/mkldnn/omp_manager.cpp \
+inference-engine/src/mkldnn_plugin/nodes/mkldnn_bin_conv_node.cpp \
+inference-engine/src/mkldnn_plugin/nodes/mkldnn_quantize_node.cpp
 
 
 
