@@ -32,32 +32,36 @@
 
 #pragma once
 #include "IRLayer.h"
-#include "ie_common.h"
 #include "ie_icnn_network.hpp"
+#include "ie_common.h"
 
-namespace android {
-namespace hardware {
-namespace neuralnetworks {
-namespace nnhal {
+
 class InternalNetworkImpl;
-class IRDocument {
+
+namespace IRBuilder
+{
+
+class IRDocument
+{
 private:
-    struct Edge {
-        struct port {
+    struct Edge
+    {
+        struct port
+        {
             int lid, pid;
         } from, to;
     };
 
     InternalNetworkImpl *network;
-    std::vector<IRLayer> _layers;  // ordered by input propagation
+    std::vector<IRLayer> _layers; // ordered by input propagation
     std::vector<Edge> _edges;
     std::string _name;
     size_t _layer_id_cnt = 1;
     bool _processed = false;
 
-    std::map<const float *, size_t> _segmentsMap = {};  // org
+    std::map<const float *, size_t> _segmentsMap={}; //org
 
-    // std::map<const short*, size_t> _segmentsMap;
+    //std::map<const short*, size_t> _segmentsMap;
 
     static bool shouldRemove(const IRLayer &l);
     void process(const IRLayer &value);
@@ -66,20 +70,19 @@ private:
 
     // saving functions
     static void saveOutputToIR(pugi::xml_node &parent, const InferenceEngine::DataPtr &port);
-    static void saveInputToIR(pugi::xml_node &parent, int index,
-                              const InferenceEngine::DataPtr &port);
+    static void saveInputToIR(pugi::xml_node &parent, int index, const InferenceEngine::DataPtr &port);
 
     // save a layer
     void saveToIR(std::ostream &binFile, pugi::xml_node &parent, const IRLayer &irLayer);
     // svae a blob
-    void saveBlobToIR(std::ostream &binFile, const InferenceEngine::Blob::Ptr &blob,
-                      pugi::xml_node &layer, const std::string &name);
+    void saveBlobToIR(std::ostream &binFile, const InferenceEngine::Blob::Ptr &blob, pugi::xml_node &layer, const std::string &name);
 
     void saveLayerToDot(std::ostream &dot, const IRLayer &irLayer) const;
     IRDocument(IRDocument &) = delete;
     IRDocument operator=(IRDocument &) = delete;
 
 public:
+
     explicit IRDocument(const std::string &cs);
     ~IRDocument();
 
@@ -92,8 +95,7 @@ public:
 
     DelayObj createDelay(const std::string &id, const TensorDims &dims);
 
-    InferenceEngine::InputInfo::Ptr createInput(const std::string &name,
-                                                const TensorDims &dims) const;
+    InferenceEngine::InputInfo::Ptr createInput(const std::string &name, const TensorDims &dims) const;
     InferenceEngine::ICNNNetwork *buildNetwork();
 
     void addOutput(const IRLayer &src, int outIndx = 0);
@@ -102,7 +104,4 @@ public:
     InferenceEngine::ICNNNetwork *getNetwork();
 };
 
-}  // namespace nnhal
-}  // namespace neuralnetworks
-}  // namespace hardware
-}  // namespace android
+}  // namespace IRBuilder

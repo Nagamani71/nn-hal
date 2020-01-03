@@ -18,31 +18,27 @@
 #define ANDROID_ML_NN_PREPAREDMODEL_H
 
 #include <android/hardware/neuralnetworks/1.0/IPreparedModel.h>
-#include <android/hardware/neuralnetworks/1.1/types.h>
 #include <android/hidl/memory/1.0/IMemory.h>
-#include <hardware/hardware.h>
 #include <hidlmemory/mapping.h>
+#include <hardware/hardware.h>
 #include <sys/mman.h>
-#include <fstream>
 #include <string>
+#include <fstream>
 
-#include "Driver.h"
 #include "IENetwork.h"
 
-#define EXPL_PAD 1
-#define IMPL_PAD 2
-
 using ::android::hidl::memory::V1_0::IMemory;
+using namespace IRBuilder;
 using namespace InferenceEngine;
 
 namespace android {
 namespace hardware {
 namespace neuralnetworks {
-namespace nnhal {
+namespace V1_0 {
+namespace driver {
 
-template <class T>
-using vec = std::vector<T>;
-typedef uint8_t* memory;
+template <class T> using  vec = std::vector<T>;
+typedef uint8_t * memory;
 
 // The type and dimensions of an operand.
 struct Shape {
@@ -55,9 +51,9 @@ struct Shape {
 // Information we maintain about each operand during execution that
 // may change during execution.
 struct RunTimeOperandInfo {
-    // std::string name;
-    // uint32_t opIdx;
-    // void * opIdx;
+    //std::string name;
+    //uint32_t opIdx;
+    //void * opIdx;
 
     // TODO Storing the type here is redundant, as it won't change during execution.
     OperandType type;
@@ -88,6 +84,7 @@ struct RunTimeOperandInfo {
     }
 };
 
+
 // Used to keep a pointer to each of the memory pools.
 struct RunTimePoolInfo {
     sp<IMemory> memory;
@@ -98,8 +95,11 @@ struct RunTimePoolInfo {
     bool update();
 };
 
+
 bool setRunTimePoolInfosFromHidlMemories(std::vector<RunTimePoolInfo>* poolInfos,
                                          const hidl_vec<hidl_memory>& pools);
+
+
 
 // Base class used to create vpu drivers for the NN HAL.  This class
 // provides some implementation of the more common functions.
@@ -109,21 +109,22 @@ bool setRunTimePoolInfosFromHidlMemories(std::vector<RunTimePoolInfo>* poolInfos
 class PreparedModel : public IPreparedModel {
 public:
     PreparedModel(const Model& model)
-        : mTargetDevice(TargetDevice::eMYRIAD), mModel(model), mNet("nnNet"), enginePtr(nullptr), mPadreq(EXPL_PAD) {
-        g_layer_precision = InferenceEngine::Precision::FP16;
+          :mTargetDevice(TargetDevice::eMYRIAD), mModel(model), mNet("nnNet"), enginePtr(nullptr) {
+        IRBuilder::g_layer_precision = InferenceEngine::Precision::FP16;
     }
 
     PreparedModel(const TargetDevice device, const Model& model)
-        : mTargetDevice(device), mModel(model), mNet("nnNet"), enginePtr(nullptr), mPadreq(EXPL_PAD) {
+          :mTargetDevice(device), mModel(model), mNet("nnNet"), enginePtr(nullptr) {
         if (mTargetDevice == TargetDevice::eCPU)
-            g_layer_precision = InferenceEngine::Precision::FP32;
+           IRBuilder::g_layer_precision = InferenceEngine::Precision::FP32;
+           //using type = typename InferenceEngine::PrecisionTrait<IRBuilder::g_layer_precision>::value_type;
         else if (mTargetDevice == TargetDevice::eMYRIAD)
-            g_layer_precision = InferenceEngine::Precision::FP16;
+           IRBuilder::g_layer_precision = InferenceEngine::Precision::FP16;
         else
-            g_layer_precision = InferenceEngine::Precision::UNSPECIFIED;
+           IRBuilder::g_layer_precision = InferenceEngine::Precision::UNSPECIFIED;
     }
 
-    ~PreparedModel() override { deinitialize(); }
+    ~PreparedModel() override {deinitialize();}
     bool initialize();
     Return<ErrorStatus> execute(const Request& request,
                                 const sp<IExecutionCallback>& callback) override;
@@ -144,7 +145,7 @@ protected:
     bool operationLRN(const Operation& operation);
     bool operationMaxPool2D(const Operation& operation);
     bool operationLogisticSigmoid(const Operation& operation);
-    // bool operationLSTM(const Operation& operation);
+    //bool operationLSTM(const Operation& operation);
     bool operationMUL(const Operation& operation);
     bool operationRELU(const Operation& operation);
     bool operationRELU1(const Operation& operation);
@@ -154,27 +155,25 @@ protected:
     bool operationTANH(const Operation& operation);
 
     void initializeInput();
-    bool finalizeOutput(/*RunTimeOperandInfo* output*/);
+    void finalizeOutput(/*RunTimeOperandInfo* output*/);
 
-    OutputPort handleFusion(const OutputPort& out, int32_t fusedOp);
+    OutputPort handleFusion(const OutputPort &out, int32_t fusedOp);
+    template<typename T>
+    T GetConstFromBuffer(const uint8_t *buf, uint32_t len);
+    template<typename T>
+    std::vector<T> GetConstVecFromBuffer(const uint8_t *buf, uint32_t len);
+    const uint8_t *GetOperandMemory(const Model &model, uint32_t index, uint32_t &len_out);
     template <typename T>
-    T GetConstFromBuffer(const uint8_t* buf, uint32_t len);
+    T ParseOperationInput(const Model &model, const Operation& operation, uint32_t index);
     template <typename T>
-    std::vector<T> GetConstVecFromBuffer(const uint8_t* buf, uint32_t len);
-    const uint8_t* GetOperandMemory(const Model& model, uint32_t index, uint32_t& len_out);
+    T GetConstOperand(const Model &model, uint32_t index);
     template <typename T>
-    T ParseOperationInput(const Model& model, const Operation& operation, uint32_t index);
-    template <typename T>
-    T GetConstOperand(const Model& model, uint32_t index);
-    template <typename T>
-    std::vector<T> GetConstVecOperand(const Model& model, uint32_t index);
-    virtual Blob::Ptr GetConstOperandAsTensor(int operand_index, int operation_idx);
-    virtual Blob::Ptr GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t* buf,
-                                            uint32_t& len);
+    std::vector<T> GetConstVecOperand(const Model &model, uint32_t index);
+    virtual Blob::Ptr GetConstOperandAsTensor(uint32_t index);
+    virtual Blob::Ptr GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t *buf, uint32_t& len);
     virtual Blob::Ptr GetConstWeightsOperandAsTensor(uint32_t index);
-    void SetOperandMemory(const Model& model, uint32_t index, uint32_t& len_out,
-                          const uint8_t* buf);
-    void SetOperandFromTensor(uint8_t* buf, uint32_t& length, Blob::Ptr infOutput);
+    void SetOperandMemory(const Model &model, uint32_t index, uint32_t &len_out, const uint8_t *buf);
+    void SetOperandFromTensor(uint8_t* buf, uint32_t &length, Blob::Ptr infOutput);
     bool isConst(int index);
     OutputPort getPort(int index);
 
@@ -183,34 +182,37 @@ protected:
     std::vector<RunTimeOperandInfo> mOperands;
     std::vector<RunTimePoolInfo> mPoolInfos;
     IRDocument mNet;
-    std::vector<OutputPort> mPorts;  // typedef std::shared_ptr<Data> DataPtr;
+    std::vector<OutputPort> mPorts;  //typedef std::shared_ptr<Data> DataPtr;
     ExecuteNetwork* enginePtr;
-    uint32_t mPadreq;
+
 };
 
 class VpuPreparedModel : public PreparedModel {
 public:
-    VpuPreparedModel(const Model& model) : PreparedModel(TargetDevice::eMYRIAD, model) {}
+    VpuPreparedModel(const Model& model)
+          :PreparedModel(TargetDevice::eMYRIAD, model) {
+    }
 
-    virtual Blob::Ptr GetConstOperandAsTensor(int operand_index, int operation_idx) override;
-    virtual Blob::Ptr GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t* buf,
-                                            uint32_t& len) override;
+    virtual Blob::Ptr GetConstOperandAsTensor(uint32_t index) override;
+    virtual Blob::Ptr GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t *buf, uint32_t& len) override;
     virtual Blob::Ptr GetConstWeightsOperandAsTensor(uint32_t index) override;
 };
 
 class CpuPreparedModel : public PreparedModel {
 public:
-    CpuPreparedModel(const Model& model) : PreparedModel(TargetDevice::eCPU, model) {}
+    CpuPreparedModel(const Model& model)
+          :PreparedModel(TargetDevice::eCPU, model) {
+    }
 
-    virtual Blob::Ptr GetConstOperandAsTensor(int operand_index, int operation_idx) override;
-    virtual Blob::Ptr GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t* buf,
-                                            uint32_t& len) override;
+    virtual Blob::Ptr GetConstOperandAsTensor(uint32_t index) override;
+    virtual Blob::Ptr GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t *buf, uint32_t& len) override;
     virtual Blob::Ptr GetConstWeightsOperandAsTensor(uint32_t index) override;
 };
 
-}  // namespace nnhal
+}  // namespace driver
+}  // namespace V1_0
 }  // namespace neuralnetworks
 }  // namespace hardware
 }  // namespace android
 
-#endif  // ANDROID_ML_NN_PREPAREDMODEL_H
+#endif // ANDROID_ML_NN_PREPAREDMODEL_H
