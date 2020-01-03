@@ -1,4 +1,4 @@
-LOCAL_PATH := $(call my-dir)/../../../dldt
+LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libmyriadPlugin
@@ -9,8 +9,6 @@ LOCAL_MODULE_OWNER := intel
 
 LOCAL_SRC_FILES := \
 	inference-engine/src/vpu/myriad_plugin/myriad_async_infer_request.cpp \
-	inference-engine/src/vpu/myriad_plugin/myriad_config.cpp \
-	inference-engine/src/vpu/myriad_plugin/myriad_executable_network.cpp \
 	inference-engine/src/vpu/myriad_plugin/myriad_executor.cpp \
 	inference-engine/src/vpu/myriad_plugin/myriad_infer_request.cpp \
 	inference-engine/src/vpu/myriad_plugin/myriad_plugin.cpp
@@ -28,15 +26,7 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/inference-engine/src/inference_engine/cpp_interfaces/impl \
 	$(LOCAL_PATH)/inference-engine/src/inference_engine/cpp_interfaces/interface \
 	$(LOCAL_PATH)/inference-engine/thirdparty/movidius/mvnc/include \
-	$(LOCAL_PATH)/inference-engine/src/vpu/graph_transformer/include \
-	$(LOCAL_PATH)/inference-engine/src/vpu/graph_transformer/include/vpu \
-	$(LOCAL_PATH)/inference-engine/src/vpu/graph_transformer/include/vpu/allocator \
-	$(LOCAL_PATH)/inference-engine/src/vpu/graph_transformer/include/vpu/backend \
-	$(LOCAL_PATH)/inference-engine/src/vpu/graph_transformer/include/vpu/frontend \
-	$(LOCAL_PATH)/inference-engine/src/vpu/graph_transformer/include/vpu/hw \
-	$(LOCAL_PATH)/inference-engine/src/vpu/graph_transformer/include/vpu/model \
-	$(LOCAL_PATH)/inference-engine/src/vpu/graph_transformer/include/vpu/sw \
-	$(LOCAL_PATH)/inference-engine/src/vpu/graph_transformer/include/vpu/utils \
+	$(LOCAL_PATH)/inference-engine/src/vpu/common
 
 
 LOCAL_CFLAGS += \
@@ -57,26 +47,23 @@ LOCAL_CFLAGS += \
 	-Wno-non-virtual-dtor \
 	-Wno-missing-field-initializers \
 	-fexceptions \
-	-Wno-error \
-	-pthread \
+	-Wno-error
 
 LOCAL_CFLAGS += \
-	-DENABLE_MYRIAD \
+	-DENABLE_MYRIAD=1 \
 	-DENABLE_VPU \
 	-DENABLE_GNA \
 	-DIMPLEMENT_INFERENCE_ENGINE_API \
-	-DIMPLEMENT_INFERENCE_ENGINE_PLUGIN \
 	-D_FORTIFY_SOURCE=2 \
 	-DNDEBUG \
 	-DENABLE_OBJECT_DETECTION_TESTS=1 \
 	-DmyriadPlugin_EXPORTS \
-	-D__ANDROID__ \
-	-DCI_BUILD_NUMBER='""' \
+	-D__ANDROID__
 #	-DNNLOG
 
 #LOCAL_CFLAGS += -D__ANDROID__ -DNNLOG
 
-LOCAL_STATIC_LIBRARIES := libvpu_graph_transformer
+LOCAL_STATIC_LIBRARIES := libgraph_transformer libvpu_common
 
 LOCAL_SHARED_LIBRARIES := libmvnc libinference_engine liblog
 
