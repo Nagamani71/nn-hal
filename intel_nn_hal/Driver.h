@@ -59,7 +59,8 @@ using namespace ::android::hardware::neuralnetworks::V1_2;
 using ::android::hardware::MQDescriptorSync;
 
 using HidlToken = android::hardware::hidl_array<uint8_t, 32>;
-//using HidlToken = android::hardware::hidl_array<uint8_t, ANEURALNETWORKS_BYTE_SIZE_OF_CACHE_TOKEN>;
+// using HidlToken = android::hardware::hidl_array<uint8_t,
+// ANEURALNETWORKS_BYTE_SIZE_OF_CACHE_TOKEN>;
 
 // Base class used to create vpu drivers for the NN HAL.  This class
 // provides some implementation of the more common functions.
@@ -91,8 +92,8 @@ public:
                                          const HidlToken& token,
                                          const sp<V1_2::IPreparedModelCallback>& callback) override;
     Return<ErrorStatus> prepareModelFromCache(
-            const hidl_vec<hidl_handle>& modelCache, const hidl_vec<hidl_handle>& dataCache,
-            const HidlToken& token, const sp<V1_2::IPreparedModelCallback>& callback) override;
+        const hidl_vec<hidl_handle>& modelCache, const hidl_vec<hidl_handle>& dataCache,
+        const HidlToken& token, const sp<V1_2::IPreparedModelCallback>& callback) override;
     Return<DeviceStatus> getStatus() override;
     Return<void> getVersionString(getVersionString_cb cb) override;
     Return<void> getType(getType_cb cb) override;
