@@ -3,21 +3,21 @@ LOCAL_PATH := $(call my-dir)
 ##############################################################
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := android.hardware.neuralnetworks@1.2-generic-impl
-LOCAL_PROPRIETARY_MODULE := true
-LOCAL_MODULE_OWNER := intel
+#LOCAL_MODULE := android.hardware.neuralnetworks@1.2-generic-impl
+#LOCAL_PROPRIETARY_MODULE := true
+#LOCAL_MODULE_OWNER := intel
 #LOCAL_MULTILIB := both
-LOCAL_MULTILIB := 64
+#LOCAL_MULTILIB := 64
 
-LOCAL_SRC_FILES := \
+#LOCAL_SRC_FILES := \
 	Driver.cpp \
 	PreparedModel.cpp
 
-LOCAL_C_INCLUDES += \
-	$(LOCAL_PATH) \
-	$(LOCAL_PATH)/graphAPI
+# LOCAL_C_INCLUDES += \
+# 	$(LOCAL_PATH) \
+# 	$(LOCAL_PATH)/graphAPI
 
-LOCAL_C_INCLUDES += \
+#LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../../dldt/inference-engine/thirdparty/pugixml/src \
 	$(LOCAL_PATH)/../../dldt/inference-engine/include \
 	$(LOCAL_PATH)/../../dldt/inference-engine/include/cpp \
@@ -38,7 +38,7 @@ LOCAL_C_INCLUDES += \
 	frameworks/ml/nn/common/include \
 	frameworks/ml/nn/runtime/include
 
-LOCAL_CFLAGS += \
+#LOCAL_CFLAGS += \
 	-std=c++17 \
 	-fPIC \
 	-fPIE \
@@ -59,15 +59,15 @@ LOCAL_CFLAGS += \
 	-fvisibility=default \
 	-fexceptions
 
-LOCAL_CFLAGS += \
+#LOCAL_CFLAGS += \
 	-DIMPLEMENT_INFERENCE_ENGINE_API \
 	-D__ANDROID__
 
-LOCAL_CFLAGS +=  -DNN_DEBUG
+#LOCAL_CFLAGS +=  -DNN_DEBUG
 #LOCAL_CFLAGS +=  -DAT_RUNTIME
 #LOCAL_CFLAGS +=  -DNNLOG
 
-LOCAL_SHARED_LIBRARIES := \
+#LOCAL_SHARED_LIBRARIES := \
 	libbase \
 	libcutils \
 	libdl \
@@ -88,28 +88,28 @@ LOCAL_SHARED_LIBRARIES := \
 	android.hidl.memory@1.0 \
 	libinference_engine
 
-LOCAL_STATIC_LIBRARIES := libgraphAPI libpugixml libneuralnetworks_common
+#LOCAL_STATIC_LIBRARIES := libgraphAPI libpugixml libneuralnetworks_common
 
-include $(BUILD_SHARED_LIBRARY)
+#include $(BUILD_SHARED_LIBRARY)
 ###############################################################
-include $(CLEAR_VARS)
-LOCAL_MODULE := android.hardware.neuralnetworks@1.2-generic-service
-LOCAL_INIT_RC := android.hardware.neuralnetworks@1.2-generic-cpu.rc \
+#include $(CLEAR_VARS)
+#LOCAL_MODULE := android.hardware.neuralnetworks@1.2-generic-service
+#LOCAL_INIT_RC := android.hardware.neuralnetworks@1.2-generic-cpu.rc \
     android.hardware.neuralnetworks@1.1-generic-gpu.rc
-LOCAL_MODULE_RELATIVE_PATH := hw
-LOCAL_PROPRIETARY_MODULE := true
-LOCAL_MODULE_OWNER := intel
-LOCAL_SRC_FILES := \
+#LOCAL_MODULE_RELATIVE_PATH := hw
+#LOCAL_PROPRIETARY_MODULE := true
+#LOCAL_MODULE_OWNER := intel
+#LOCAL_SRC_FILES := \
 	service.cpp
 
-LOCAL_C_INCLUDES += \
+#LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH) \
 	frameworks/ml/nn/common/include \
 	frameworks/ml/nn/runtime/include
 
-LOCAL_CFLAGS += -fexceptions -fPIE -std=c++17
+#LOCAL_CFLAGS += -fexceptions -fPIE -std=c++17
 
-LOCAL_SHARED_LIBRARIES := \
+#LOCAL_SHARED_LIBRARIES := \
 	libhidlbase \
 	libhidltransport \
 	libutils \
@@ -119,15 +119,15 @@ LOCAL_SHARED_LIBRARIES := \
 	android.hardware.neuralnetworks@1.2 \
 	android.hardware.neuralnetworks@1.2-generic-impl
 
-LOCAL_MULTILIB := 64
+#LOCAL_MULTILIB := 64
 
-include $(BUILD_EXECUTABLE)
+#include $(BUILD_EXECUTABLE)
 #############################################################
 
 ZPATH := $(LOCAL_PATH)
 include $(CLEAR_VARS)
 
-include $(ZPATH)/graphAPI/graphAPI.mk
-include $(ZPATH)/graphTests/graphTests.mk
+# include $(ZPATH)/graphAPI/graphAPI.mk
+# include $(ZPATH)/graphTests/graphTests.mk
 include $(ZPATH)/dl/Android.mk
 #include $(ZPATH)/ncsdk2/api/src/Android.mk
