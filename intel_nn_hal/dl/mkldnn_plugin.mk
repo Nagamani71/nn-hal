@@ -11,19 +11,19 @@ LOCAL_MODULE_OWNER := intel
 LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/inference-engine/thirdparty/mkl-dnn \
     $(LOCAL_PATH)/inference-engine/thirdparty/mkl-dnn/src \
-	$(LOCAL_PATH)/inference-engine/thirdparty/mkl-dnn/src/common \
-	$(LOCAL_PATH)/inference-engine/thirdparty/mkl-dnn/src/cpu \
-	$(LOCAL_PATH)/inference-engine/thirdparty/mkl-dnn/src/cpu/xbyak \
+    $(LOCAL_PATH)/inference-engine/thirdparty/mkl-dnn/src/common \
+    $(LOCAL_PATH)/inference-engine/thirdparty/mkl-dnn/src/cpu \
+    $(LOCAL_PATH)/inference-engine/thirdparty/mkl-dnn/src/cpu/xbyak \
     $(LOCAL_PATH)/inference-engine/thirdparty/mkl-dnn/include \
 
 LOCAL_C_INCLUDES += \
-	$(LOCAL_PATH)/inference-engine/include \
-	$(LOCAL_PATH)/inference-engine/src/inference_engine
+    $(LOCAL_PATH)/inference-engine/include \
+    $(LOCAL_PATH)/inference-engine/src/inference_engine
 
 LOCAL_C_INCLUDES += \
-	$(LOCAL_PATH)/inference-engine/src/mkldnn_plugin \
-	$(LOCAL_PATH)/inference-engine/src/mkldnn_plugin/mkldnn \
-	$(LOCAL_PATH)/inference-engine/src/mkldnn_plugin/nodes \
+    $(LOCAL_PATH)/inference-engine/src/mkldnn_plugin \
+    $(LOCAL_PATH)/inference-engine/src/mkldnn_plugin/mkldnn \
+    $(LOCAL_PATH)/inference-engine/src/mkldnn_plugin/nodes \
     $(LOCAL_PATH)/inference-engine/src/mkldnn_plugin/utils 
 
 LOCAL_CFLAGS += -std=c++11 -Werror -Werror=return-type  -Wuninitialized -Winit-self -Wmaybe-uninitialized -fvisibility-inlines-hidden -ffunction-sections -fdata-sections  -fPIE -fPIC -Wformat -Wformat-security -fstack-protector-strong -O3 -DNDEBUG -D_FORTIFY_SOURCE=2 -s -fvisibility=hidden -fPIC   -fopenmp -std=gnu++11
