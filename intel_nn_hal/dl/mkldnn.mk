@@ -205,4 +205,4 @@ inference-engine/thirdparty/mkl-dnn/src/cpu/rnn/rnn_utils.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/simple_concat.cpp \
 inference-engine/thirdparty/mkl-dnn/src/cpu/simple_sum.cpp
 
-include $(BUILD_SHARED_LIBRARY)
+include $(BUILD_STATIC_LIBRARY)

@@ -32,8 +32,8 @@ LOCAL_CFLAGS += -DCI_BUILD_NUMBER='"custom_HEAD_fe3f978b98c86eaeed3cbdc280e1ffd0
 LOCAL_CFLAGS += -D__ANDROID__ -frtti -fexceptions -Wno-unused-variable -Wno-unused-parameter -Wno-non-virtual-dtor -Wno-missing-field-initializers -Wno-unknown-pragmas -Wno-strict-overflow -Wall -Wno-error
 
 
-LOCAL_STATIC_LIBRARIES := libomp
-LOCAL_SHARED_LIBRARIES := libinference_engine libmkldnn
+LOCAL_STATIC_LIBRARIES := libmkldnn libomp
+LOCAL_SHARED_LIBRARIES := libinference_engine 
 
 LOCAL_SRC_FILES += \
 inference-engine/src/mkldnn_plugin/config.cpp \

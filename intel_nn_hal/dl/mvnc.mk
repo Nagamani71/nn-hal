@@ -3,10 +3,6 @@ include $(CLEAR_VARS)
 
 LIBUSB_HEADER:= $(LOCAL_PATH)/../../../../../external/libusb/libusb
 
-MV_COMMON_BASE:= $(LOCAL_PATH)/inference-engine/thirdparty/movidius
-XLINK_BASE:= $(MV_COMMON_BASE)/XLink
-#XLINKCONSOLE_BASE:= $(MV_COMMON_BASE)/components/XLinkConsole
-
 LOCAL_MODULE := libmvnc
 LOCAL_PROPRIETARY_MODULE := true
 LOCAL_MULTILIB := 64
@@ -14,6 +10,7 @@ LOCAL_MODULE_OWNER := intel
 
 LOCAL_SRC_FILES := \
 	inference-engine/thirdparty/movidius/mvnc/src/mvnc_api.c \
+	inference-engine/thirdparty/movidius/mvnc/src/mvnc_data.c \
 	inference-engine/thirdparty/movidius/watchdog/watchdog.cpp \
 
 LOCAL_C_INCLUDES += \
@@ -35,7 +32,7 @@ LOCAL_CFLAGS += -D__ANDROID__ -frtti -fexceptions -Wno-unused-variable -Wno-unus
 
 LOCAL_SHARED_LIBRARIES := libusb liblog
 
-include $(BUILD_SHARED_LIBRARY)
+include $(BUILD_STATIC_LIBRARY)
 
 ####################################################
 #include $(BUILD_STATIC_LIBRARY)
@@ -57,19 +54,6 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := MvNCAPI-ma2450.mvcmd
 LOCAL_SRC_FILES := inference-engine/temp/vpu/firmware/ma2450/mvnc/MvNCAPI-ma2450.mvcmd
-LOCAL_PROPRIETARY_MODULE := true
-LOCAL_MODULE_OWNER := intel
-LOCAL_MODULE_CLASS := ETC
-
-#LOCAL_MODULE_PATH := $(PRODUCT_OUT)/vendor/firmware/mvnc
-
-include $(BUILD_PREBUILT)
-#####################################################
-$(info LOCAL_PATH =$(LOCAL_PATH))
-include $(CLEAR_VARS)
-
-LOCAL_MODULE := MvNCAPI-ma2480.mvcmd
-LOCAL_SRC_FILES := inference-engine/temp/vpu/firmware/ma2480/mvnc/MvNCAPI-ma2480.mvcmd
 LOCAL_PROPRIETARY_MODULE := true
 LOCAL_MODULE_OWNER := intel
 LOCAL_MODULE_CLASS := ETC

@@ -41,9 +41,9 @@ LOCAL_CFLAGS += -DENABLE_MKL_DNN=1 -DENABLE_MYRIAD=1 -DENABLE_UNICODE_PATH_SUPPO
 LOCAL_CFLAGS += -DCI_BUILD_NUMBER='"custom_HEAD_fe3f978b98c86eaeed3cbdc280e1ffd0bc50d278"'
 LOCAL_CFLAGS += -D__ANDROID__ -frtti -fexceptions -Wno-unused-variable -Wno-unused-parameter -Wno-non-virtual-dtor -Wno-missing-field-initializers -Wno-unknown-pragmas -Wno-strict-overflow -Wall -Wno-error
 
-LOCAL_STATIC_LIBRARIES := libvpu_graph_transformer libpugixml libvpu_common_lib libXLink libomp
+LOCAL_STATIC_LIBRARIES := libvpu_graph_transformer libpugixml libvpu_common_lib libXLink libmvnc libomp
 
-LOCAL_SHARED_LIBRARIES := libmvnc libinference_engine liblog libusb
+LOCAL_SHARED_LIBRARIES := libinference_engine liblog libusb
 
 include $(BUILD_SHARED_LIBRARY)
 
