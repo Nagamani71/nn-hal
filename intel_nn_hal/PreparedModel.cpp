@@ -1160,7 +1160,7 @@ bool PreparedModel::initialize() {
     dot.close();
 
     VLOG(L1, "initialize ExecuteNetwork for device %s",
-         InferenceEngine::TargetDeviceInfo::name(mTargetDevice));
+         mTargetDevice.c_str());
     enginePtr = new ExecuteNetwork(mNet, mTargetDevice);
     enginePtr->prepareInput();
     enginePtr->loadNetwork();

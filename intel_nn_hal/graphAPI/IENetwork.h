@@ -118,24 +118,25 @@ class ExecuteNetwork {
     IInferRequest::Ptr req;
     InferRequest inferRequest;
     ResponseDesc resp;
+    std::string targetDevice;
+    InferenceEngine::CNNNetwork c_network;
 
 public:
     ExecuteNetwork() : network(nullptr) {}
-    ExecuteNetwork(IRDocument &doc, TargetDevice target = TargetDevice::eCPU) : network(nullptr) {
-        InferenceEngine::PluginDispatcher dispatcher(
-            {"/vendor/lib64", "/vendor/lib", "/system/lib64", "/system/lib", "", "./"});
-        enginePtr = dispatcher.getSuitablePlugin(target);
-
+    ExecuteNetwork(IRDocument &doc, std::string target = "CPU") : network(nullptr) {
+        
         network = doc.getNetwork();
+        std::shared_ptr<InferenceEngine::ICNNNetwork> pNetwork;
+        //	= std::make_shared<InferenceEngine::ICNNNetwork>(network);
+	    pNetwork.reset(network);
+        c_network = InferenceEngine::CNNNetwork(pNetwork);
         network->getInputsInfo(inputInfo);
         network->getOutputsInfo(outputInfo);
+        targetDevice = target;
 
         // size_t batch = 1;
         // network->setBatchSize(batch);
 
-#ifdef NNLOG
-        ALOGI("%s Plugin loaded", InferenceEngine::TargetDeviceInfo::name(target));
-#endif
     }
 
     ExecuteNetwork(ExecutableNetwork &exeNet) : ExecuteNetwork() {
@@ -146,11 +147,10 @@ public:
 
     //~ExecuteNetwork(){ }
     void loadNetwork() {
+        InferenceEngine::Core ie;
         std::map<std::string, std::string> networkConfig;
         setConfig(networkConfig);
-
-        InferencePlugin plugin(enginePtr);
-        executable_network = plugin.LoadNetwork(*network, networkConfig);
+        executable_network = ie.LoadNetwork(c_network, targetDevice, networkConfig);
         // std::cout << "Network loaded" << std::endl;
         ALOGI("Network loaded");
 

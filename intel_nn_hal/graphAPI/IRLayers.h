@@ -82,7 +82,7 @@ inline OutputPort addOutput(const IRLayer &layer, const InferenceEngine::SizeVec
     }
 
     layer->outData.push_back(data);
-    data->creatorLayer = layer;
+    data->getCreatorLayer() = layer;
 
 #ifdef NNLOG
     std::vector<size_t> outdims = data->getTensorDesc().getDims();
@@ -134,7 +134,7 @@ inline IRLayer Generic(const std::string &type, const OutputPort &src) {
 
 inline OutputPort output(const IRLayer &src, int index = 0) { return src->outData[index]; }
 
-inline IRLayer LayerOf(const OutputPort &src) { return src->creatorLayer.lock(); }
+inline IRLayer LayerOf(const OutputPort &src) { return src->getCreatorLayer().lock(); }
 
 inline IRLayer Generic(const std::string &type, const IRLayer &src) {
     return Generic(type, output(src));

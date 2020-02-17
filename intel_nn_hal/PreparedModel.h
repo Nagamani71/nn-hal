@@ -122,7 +122,7 @@ template <typename T_IExecutionCallback>
 class PreparedModel : public V1_2::IPreparedModel {
 public:
     PreparedModel(const Model& model)
-        : mTargetDevice(TargetDevice::eMYRIAD),
+        : mTargetDevice("MYRIAD"),
           mModel(model),
           mNet("nnNet"),
           enginePtr(nullptr),
@@ -130,15 +130,15 @@ public:
         g_layer_precision = InferenceEngine::Precision::FP16;
     }
 
-    PreparedModel(const TargetDevice device, const Model& model)
+    PreparedModel(const std::string device, const Model& model)
         : mTargetDevice(device),
           mModel(model),
           mNet("nnNet"),
           enginePtr(nullptr),
           mPadreq(EXPL_PAD) {
-        if (mTargetDevice == TargetDevice::eCPU || mTargetDevice == TargetDevice::eGPU)
+        if (mTargetDevice == "CPU" || mTargetDevice == "GPU")
             g_layer_precision = InferenceEngine::Precision::FP32;
-        else if (mTargetDevice == TargetDevice::eMYRIAD)
+        else if (mTargetDevice == "MYRIAD")
             g_layer_precision = InferenceEngine::Precision::FP16;
         else
             g_layer_precision = InferenceEngine::Precision::UNSPECIFIED;
@@ -218,7 +218,7 @@ protected:
     bool isConst(int index);
     OutputPort getPort(int index);
 
-    TargetDevice mTargetDevice;
+    std::string mTargetDevice;
     Model mModel;
     std::vector<RunTimeOperandInfo> mOperands;
     std::vector<RunTimePoolInfo> mPoolInfos;
@@ -230,7 +230,7 @@ protected:
 
 class VpuPreparedModel : public PreparedModel {
 public:
-    VpuPreparedModel(const Model& model) : PreparedModel(TargetDevice::eMYRIAD, model) {}
+    VpuPreparedModel(const Model& model) : PreparedModel("MYRIAD", model) {}
 
     virtual Blob::Ptr GetConstOperandAsTensor(int operand_index, int operation_idx) override;
     virtual Blob::Ptr GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t* buf,
@@ -240,7 +240,7 @@ public:
 
 class CpuPreparedModel : public PreparedModel {
 public:
-    CpuPreparedModel(const Model& model) : PreparedModel(TargetDevice::eCPU, model) {}
+    CpuPreparedModel(const Model& model) : PreparedModel("CPU", model) {}
 
     virtual Blob::Ptr GetConstOperandAsTensor(int operand_index, int operation_idx) override;
     virtual Blob::Ptr GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t* buf,
@@ -250,7 +250,7 @@ public:
 
 class GpuPreparedModel : public PreparedModel {
 public:
-    GpuPreparedModel(const Model& model) : PreparedModel(TargetDevice::eGPU, model) {}
+    GpuPreparedModel(const Model& model) : PreparedModel("GPU", model) {}
 
     virtual Blob::Ptr GetConstOperandAsTensor(int operand_index, int operation_idx) override;
     virtual Blob::Ptr GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t* buf,
