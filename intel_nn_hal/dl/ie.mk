@@ -128,7 +128,8 @@ inference-engine/src/inference_engine/transform/transformations/convert_mul_or_a
 inference-engine/src/inference_engine/transform/transformations/convert_quantize_conv_elimination.cpp \
 inference-engine/src/inference_engine/transform/transformations/matmul_bias_fusion.cpp \
 inference-engine/src/inference_engine/transform/transformations/quantizeconv_dequantize_fusion.cpp \
-inference-engine/src/inference_engine/xml_parse_utils.cpp
+inference-engine/src/inference_engine/xml_parse_utils.cpp \
+inference-engine/src/inference_engine/ie_layers.cpp
 
 
 

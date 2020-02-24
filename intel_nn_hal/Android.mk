@@ -18,7 +18,7 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/graphAPI
 
 LOCAL_C_INCLUDES += \
-	$(LOCAL_PATH)/../../dldt/inference-engine/thirdparty/pugixml/src \
+$(LOCAL_PATH)/../../dldt/inference-engine/thirdparty/pugixml/src \
     $(LOCAL_PATH)/../../dldt/inference-engine/include \
 	$(LOCAL_PATH)/../../dldt/inference-engine/include/builders \
 	$(LOCAL_PATH)/../../dldt/inference-engine/include/cldnn \
@@ -61,8 +61,7 @@ LOCAL_CFLAGS += \
 	-Wno-array-bounds \
 	-D_FORTIFY_SOURCE=2 \
 	-fvisibility=default \
-	-fexceptions \
-	-frtti
+	-fexceptions
 
 LOCAL_CFLAGS += \
 	-DIMPLEMENT_INFERENCE_ENGINE_API \
@@ -72,17 +71,20 @@ LOCAL_CFLAGS +=  -DNN_DEBUG
 #LOCAL_CFLAGS +=  -DAT_RUNTIME
 #LOCAL_CFLAGS +=  -DNNLOG
 
-LOCAL_HEADER_LIBRARIES += libneuralnetworks_headers
-
 LOCAL_SHARED_LIBRARIES := \
-	libhidlbase \
-	libhidltransport \
-	libutils \
-	liblog \
-	libcutils \
-	libhardware \
 	libbase \
+	libcutils \
+	libdl \
+	libfmq \
+	libhardware \
+	libhidlbase \
 	libhidlmemory \
+	libhidltransport \
+	libnativewindow \
+	libtextclassifier_hash \
+	liblog \
+	libui \
+	libutils \
 	android.hardware.neuralnetworks@1.0 \
 	android.hardware.neuralnetworks@1.1 \
 	android.hardware.neuralnetworks@1.2 \
