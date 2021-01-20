@@ -12,30 +12,13 @@ cc_library_shared {
         "BasePreparedModel.cpp",
         "utils.cpp",
         "cpu/CpuPreparedModel.cpp",
-        "gna/GnaPreparedModel.cpp",
-        "operations/src/Add.cpp",
-        "operations/src/AveragePool.cpp",
-        "operations/src/Concatination.cpp",
-        "operations/src/Convolution.cpp",
-        "operations/src/DepthwiseConvolution.cpp",
-        "operations/src/FullyConnected.cpp",
-        "operations/src/L2Normalization.cpp",
-        "operations/src/LocalResponseNormalization.cpp",
-        "operations/src/Logistic.cpp",
-        "operations/src/MaxPool.cpp",
-        "operations/src/Mul.cpp",
-        "operations/src/Relu.cpp",
-        "operations/src/Relu1.cpp",
-        "operations/src/Relu6.cpp",
-        "operations/src/Softmax.cpp",
-        "operations/src/Tanh.cpp",
-        "operations/src/Reshape.cpp"
+        "gna/GnaPreparedModel.cpp"
     ],
 
     local_include_dirs: [
         "graphAPI",
-        "operations",
-        "operations/include",
+        "ngraph_creator/include",
+        "ngraph_creator/operations/include",
         "cpu",
         "gna"
     ],
@@ -125,6 +108,7 @@ cc_library_shared {
         "libgraphAPI",
         "libpugixml",
         "libneuralnetworks_common",
+        "libngraph_creator"
     ],
 
     generated_headers: [

@@ -29,6 +29,7 @@
 #include "Driver.h"
 #include "utils.h"
 #include "create_ngraph.hpp"
+#include <NgraphNetworkCreator.hpp>
 #include "IENetwork.h"
 
 
@@ -111,17 +112,16 @@ class BasePreparedModel : public V1_2::IPreparedModel{
         BasePreparedModel(const Model& model)
         : mTargetDevice("CPU"),
           mModel(model),
-          mNet("nnNet"),
           enginePtr(nullptr){
             g_layer_precision = InferenceEngine::Precision::FP16;
             mUseNgraph =
                 isNgraphPropSet();  // TODO:Should additionally check if all the ops are supported
             mCreateNgraph = std::make_shared<CreateNgraph>();
+            mNgc = std::make_shared<NgraphNetworkCreator>(mModel, mTargetDevice);
         }
         BasePreparedModel(const std::string device, const Model& model)
         : mTargetDevice(device),
           mModel(model),
-          mNet("nnNet"),
           enginePtr(nullptr) {
             if (mTargetDevice == "CPU" || mTargetDevice == "GPU")
                 g_layer_precision = InferenceEngine::Precision::FP32;
@@ -131,6 +131,7 @@ class BasePreparedModel : public V1_2::IPreparedModel{
                 g_layer_precision = InferenceEngine::Precision::UNSPECIFIED;
             mUseNgraph = isNgraphPropSet();
             mCreateNgraph = std::make_shared<CreateNgraph>();
+            mNgc = std::make_shared<NgraphNetworkCreator>(mModel, mTargetDevice);
         }
 
         virtual ~BasePreparedModel() { deinitialize(); }
@@ -150,19 +151,14 @@ class BasePreparedModel : public V1_2::IPreparedModel{
         static bool isOperationSupported(const Operation& operation, const Model& model);
         virtual bool initialize(const Model& model);
         bool isConst(int index, const Model& model);
-        OutputPort getPort(int index, const Model& model);
         template <typename T>
         T ParseOperationInput(const Model& model, const Operation& operation, uint32_t index);
         template <typename T>
         std::vector<T> GetConstVecOperand(const Model& model, uint32_t index); //for reshape
 
-        IRDocument mNet; //public for add operation
-        std::shared_ptr<CreateNgraph> mCreateNgraph; //for operations
 protected:
         virtual void deinitialize();
         bool initializeRunTimeOperandInfo();
-        void initializeInput();
-        bool finalizeOutput();
         template <typename T>
         T GetConstOperand(const Model& model, uint32_t index);
 
@@ -184,12 +180,13 @@ protected:
                                  const sp<T_IExecutionCallback>& callback);
         // OutputPort getPort(int index);
 
+        std::shared_ptr<NgraphNetworkCreator> mNgc;
         std::string mTargetDevice;
         Model mModel;
         std::vector<RunTimeOperandInfo> mOperands;
         std::vector<RunTimePoolInfo> mPoolInfos;
-        std::vector<OutputPort> mPorts;  // typedef std::shared_ptr<Data> DataPtr;
         ExecuteNetwork* enginePtr;
+        std::shared_ptr<CreateNgraph> mCreateNgraph;
 
         bool mUseNgraph = true;
 };

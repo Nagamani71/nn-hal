@@ -27,6 +27,14 @@ bool GnaPreparedModel::initialize(const Model& model) {
     VLOG(L1, "initialize");
     bool success = false;
 
+    
+    //NgraphNetworkCreator ngc(mModel, "CPU");
+    mNgc->initializeModel();//NgraphNetworkCreator
+    auto ngraph_function = mNgc->generateGraph();
+    InferenceEngine::CNNNetwork ngraph_net = InferenceEngine::CNNNetwork(ngraph_function);
+    ngraph_net.serialize("/data/vendor/neuralnetworks/ngraph_ir.xml", "/data/vendor/neuralnetworks/ngraph_ir.bin");
+
+
      // Check operation supoorted or not, user may not call getOpertionSupported()
     for (const auto& operation : mModel.operations) {
         success = isOperationSupported(operation, mModel);
@@ -49,41 +57,8 @@ bool GnaPreparedModel::initialize(const Model& model) {
         return false;
     }
 
-    for (const auto& operation : mModel.operations) {
-        VLOG(L1, "get operation %d ready to add", operation.type);
-        dumpOperation(operation);
-        switch (operation.type) {
-
-            case OperationType::CONCATENATION:{
-                success = concat::initialize(mTargetDevice.c_str(), operation, model);
-            } break;
-            case OperationType::FULLY_CONNECTED:{
-                success = fullyconnected::initialize(mTargetDevice.c_str(), operation, model);
-            } break;
-            default:
-                VLOG(L1, "unsupported operation %d", operation.type);
-                return false;
-        }
-        if (success == false) {
-            VLOG(L1, "failed to convert operation %d", operation.type);
-            return false;
-        }
-    }
-
-    initializeInput();
-    success = finalizeOutput();
-
-    initializeInput();
-    success = finalizeOutput();
-
-    InferenceEngine::CNNNetwork ngraph_net;
-    ngraph_net = mCreateNgraph->generate(std::string("/data/vendor/neuralnetworks/ngraph_ir.xml"),
-                                         std::string("/data/vendor/neuralnetworks/ngraph_ir.bin"));
-    if (success == false) return success;
-
-    mNet.buildNetwork();
     VLOG(L1, "initialize ExecuteNetwork for device %s", mTargetDevice.c_str());
-    enginePtr = new ExecuteNetwork(ngraph_net, mNet, mTargetDevice);
+    enginePtr = new ExecuteNetwork(ngraph_net, mTargetDevice);
     enginePtr->prepareInput();
     enginePtr->loadNetwork(ngraph_net);
 
@@ -268,6 +243,7 @@ Blob::Ptr GnaPreparedModel::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const 
 {
     if (op.type == OperandType::TENSOR_FLOAT32 || op.type == OperandType::FLOAT32) {
         if (op.lifetime == OperandLifeTime::MODEL_INPUT) {
+            std::vector<uint32_t> dims(op.dimensions.begin(), op.dimensions.end());
             if (buf == nullptr)
                 VLOG(L1, "MODEL_INPUT buf is NULL !!!!!!!!!!!!!!!");
 
@@ -276,6 +252,10 @@ Blob::Ptr GnaPreparedModel::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const 
             if (op.dimensions.size() == 4) {
                 order = {0,3,1,2};  //nhwc -> nchw
                 layout = Layout::NCHW;
+            } else if (op.dimensions.size() == 3) {//Inputs are forced to 4D
+                dims.insert(dims.begin(), 1);
+                order = {0, 3, 1, 2};  // nhwc -> nchw
+                layout = Layout::NCHW; 
             }
             else if (op.dimensions.size() == 2) {
                 order = {0, 1};
@@ -286,7 +266,9 @@ Blob::Ptr GnaPreparedModel::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const 
                 layout = Layout::C;
             }
 
-            auto inputDims = toDims(op.dimensions);
+            // auto inputDims = toDims(op.dimensions);
+            ALOGD("GetInOutOperandAsBlob dims size %d", op.dimensions.size());
+            auto inputDims = toDims(dims);
             TensorDesc td(InferenceEngine::Precision::FP32, permuteDims(inputDims, order), layout);
             if (inputDims.size() != 4) {
                 //VLOG(L1, "buf data %f", *((float*)buf));

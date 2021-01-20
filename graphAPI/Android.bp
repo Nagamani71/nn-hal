@@ -6,7 +6,6 @@ cc_library_static {
     compile_multilib: "64",
 
     srcs: [
-        "IRDocument.cpp",
         "IRLayer.cpp",
     ],
 

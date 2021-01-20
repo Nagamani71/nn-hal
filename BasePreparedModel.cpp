@@ -175,76 +175,16 @@ bool BasePreparedModel::isOperationSupported(const Operation& operation, const M
 
 #define VLOG_CHECKFAIL(fail) VLOG(L1, "Check failed: %s", fail)
 
+    sp<NgraphNetworkCreator> mNgraphNwCreator = NULL;
+
     switch (operation.type) {
 
-        case OperationType::ADD: {
-            if(!add::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::AVERAGE_POOL_2D: {
-            if(!avgpool::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::FULLY_CONNECTED: {
-            if(!avgpool::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::MUL:{
-            if(!mul::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::MAX_POOL_2D: {
-            if(!maxpool::validate(operation, model))
-                return false;
-        } break;
+        case OperationType::ADD: 
         case OperationType::CONCATENATION:{
-            if(!concat::validate(operation, model))
+            if(!mNgraphNwCreator->validateOperations())
                 return false;
         } break;
-        case OperationType::CONV_2D:{
-            if(!convolution::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::DEPTHWISE_CONV_2D:{
-            if(!depthconv::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::L2_NORMALIZATION:{
-            if(!l2normalization::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::LOCAL_RESPONSE_NORMALIZATION:{
-            if(!lrn::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::RELU:{
-            if(!relu::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::RELU1:{
-            if(!relu1::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::RELU6:{
-            if(!relu6::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::LOGISTIC:{
-            if(!logistic::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::SOFTMAX:{
-            if(!softmax::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::TANH:{
-            if(!softmax::validate(operation, model))
-                return false;
-        } break;
-        case OperationType::RESHAPE:{
-            if(!reshape::validate(operation, model))
-                return false;
-        } break;
+        
         default:
             VLOG(L1, "unsupport operation %d", operation.type);
             return false;
@@ -274,52 +214,6 @@ bool BasePreparedModel::isOperationSupported(const Operation& operation, const M
 
 bool BasePreparedModel::initialize(const Model& model) {
     VLOG(L1, "initialize");
-    return true;
-}
-
-void BasePreparedModel::initializeInput() {
-    VLOG(L1, "initialize Input");
-    for (auto i : mModel.inputIndexes) {
-        int dims_size = mOperands[i].dimensions.size();
-
-        VLOG(L1, "mPorts[%d] %s dims size %d", i, mPorts[i]->getName().c_str(), dims_size);
-        VLOGDIMS(L1, mOperands[i].dimensions, "current operand inpu dims:");
-        VLOGDIMS(L1, mPorts[i]->getTensorDesc().getDims(), "Real input dims:");
-
-        auto inputDims = mPorts[i]->getTensorDesc().getDims();
-
-        uint32_t nelem = getNumberOfElements(mOperands[i].dimensions);
-        auto inputElem = sizeOfTensor(inputDims);
-        if (nelem != inputElem) {
-            VLOG(L1, "set operand input dims to real input dims\n");
-            for (auto j = 0; j < inputDims.size(); j++)
-                mOperands[i].dimensions[j] = static_cast<uint32_t>(inputDims[j]);
-            mOperands[i].length = sizeOfData(mOperands[i].type, mOperands[i].dimensions);
-        }
-    }
-}
-
-bool BasePreparedModel::finalizeOutput(/*RunTimeOperandInfo* output */) {
-    VLOG(L1, "finalize Output");
-    for (auto i : mModel.outputIndexes) {
-        int dims_size = mOperands[i].dimensions.size();
-
-        mPorts[i]->setPrecision(InferenceEngine::Precision::FP32);
-        mNet.addOutput(mPorts[i]);
-        mCreateNgraph->setResultNode(mPorts[i]->getName());
-
-        VLOG(L1, "mPorts[%d] %s dims size %d", i, mPorts[i]->getName().c_str(), dims_size);
-        VLOGDIMS(L1, mOperands[i].dimensions, "current operand Output dims:");
-        VLOGDIMS(L1, mPorts[i]->getTensorDesc().getDims(), "Real Output dims:");
-
-        auto outputDims = mPorts[i]->getTensorDesc().getDims();
-
-        uint32_t nelem = getNumberOfElements(mOperands[i].dimensions);
-        auto outputElem = sizeOfTensor(outputDims);
-        if (nelem != outputElem) {
-            VLOG(L1, "set correct dims as operand output dims different than real output dims\n");
-        }
-    }
     return true;
 }
 
@@ -432,77 +326,6 @@ bool BasePreparedModel::isConst(int index, const Model& model) {
     return ret;
 }
 
-OutputPort BasePreparedModel::getPort(int index, const Model& model) {
-    VLOG(L1, "getPort\n");
-    if (isConst(index, model)) {
-        VLOG(L1, "index is a const!");
-        nnAssert(false);
-    }
-    const auto op = model.operands[index];
-    if (op.lifetime == OperandLifeTime::MODEL_INPUT) {
-        VLOG(L1, "Model input operand\n");
-        std::ostringstream operandName;
-        operandName << "input" << index;
-
-        vec<unsigned int> order;
-        if (op.dimensions.size() == 4)
-            order = {0, 3, 1, 2};  // nhwc -> nchw
-        else if (op.dimensions.size() == 2)
-            order = {0, 1};
-        else
-            order = {0};  //(op.dimensions.size() < 2)
-
-        auto operandInfo = mNet.createInput(
-            operandName.str(), permuteDims(toDims(op.dimensions), order));  // NHWC -> NCHW
-        mPorts[index] = operandInfo->getInputData();
-        mCreateNgraph->addInputParameter(operandName.str(),
-                                         mPorts[index]->getTensorDesc().getDims());
-        // TODO: workaround 3-D
-        int dims_size = op.dimensions.size();
-
-        VLOG(L1, "mPorts[%d] %s dims size %d", index, mPorts[index]->getName().c_str(), dims_size);
-
-        auto dims = permuteDims(toDims(op.dimensions), order);
-        // auto dims = toDims(op.dimensions);
-        for (auto i = 0; i < dims.size(); i++)
-            VLOG(L1, "input dims[%d] = %d & set input dims[%d] = %d ", i, op.dimensions[i], i,
-                 dims[i]);
-
-        switch (dims_size) {
-            case 2:
-                mPorts[index]->setLayout(NC);
-                break;
-            case 4:
-                mPorts[index]->setLayout(NCHW);
-                break;
-            case 1:
-                mPorts[index]->setLayout(C);
-                break;
-            default:
-                VLOG(L1, "unsupported dims size %d", dims_size);
-                nnAssert(false);
-        }
-
-        return mPorts[index];
-    }
-    if (op.lifetime == OperandLifeTime::MODEL_OUTPUT) {
-        VLOG(L1, "Model output expected as input, not possible");
-        nnAssert(false);
-    }
-    if (op.lifetime == OperandLifeTime::NO_VALUE) {
-        VLOG(L1, "port is expected to be allocated for this as output from other layer");
-        nnAssert(false);
-    }
-    if (op.lifetime == OperandLifeTime::TEMPORARY_VARIABLE) {
-        VLOG(L1, "getport OperandLifeTime::TEMPORARY_VARIABLE\n");
-        if (!mPorts[index]) nnAssert(false);
-        VLOG(L1, "mPorts[%d] already allocated\n", index);
-        return mPorts[index];
-    }
-
-    return nullptr;
-}
-
 bool BasePreparedModel::initializeRunTimeOperandInfo() {
     // initialize runtime operand info from model.
     const size_t count = mModel.operands.size();
@@ -511,7 +334,6 @@ bool BasePreparedModel::initializeRunTimeOperandInfo() {
         return false;
     }
     mOperands.resize(count);
-    mPorts.resize(count);
     // TensorDims dims;
 
     // Start by setting the runtime info to what's in the model.
@@ -629,8 +451,7 @@ void BasePreparedModel::asyncExecute(const Request& request, MeasureTiming measu
 
     auto inOutData = [this, &requestPoolInfos](const std::vector<uint32_t>& indexes,
                                                const hidl_vec<RequestArgument>& arguments,
-                                               bool inputFromRequest, ExecuteNetwork* enginePtr,
-                                               std::vector<OutputPort> mPorts) {
+                                               bool inputFromRequest, ExecuteNetwork* enginePtr) {
         // do memcpy for input data
         for (size_t i = 0; i < indexes.size(); i++) {
             RunTimeOperandInfo& operand = mOperands[indexes[i]];
@@ -653,10 +474,10 @@ void BasePreparedModel::asyncExecute(const Request& request, MeasureTiming measu
                 auto inputBlob = GetInOutOperandAsBlob(
                     operand, const_cast<uint8_t*>(r.buffer + arg.location.offset),
                     operand.length);  // if not doing memcpy
-                VLOG(L1, "Copy inputBlob for mPorts[%d]->name %s", indexes[i],
-                     mPorts[indexes[i]]->getName().c_str());
+                VLOG(L1, "Copy inputBlob for mNgc->getNodeName([%d])->name %s", indexes[i],
+                     mNgc->getNodeName(indexes[i]).c_str());
 
-                auto destBlob = enginePtr->getBlob(mPorts[indexes[i]]->getName());
+                auto destBlob = enginePtr->getBlob(mNgc->getNodeName(indexes[i]));
                 uint8_t* dest = destBlob->buffer().as<uint8_t*>();
                 uint8_t* src = inputBlob->buffer().as<uint8_t*>();
                 std::memcpy(dest, src, inputBlob->byteSize());
@@ -664,9 +485,9 @@ void BasePreparedModel::asyncExecute(const Request& request, MeasureTiming measu
                 auto outputBlob = GetInOutOperandAsBlob(
                     operand, const_cast<uint8_t*>(r.buffer + arg.location.offset),
                     operand.length);  // if not doing memcpy
-                VLOG(L1, "copyData from IE to Android blob for mPorts[%d]->name %s", indexes[i],
-                     mPorts[indexes[i]]->getName().c_str());
-                auto srcBlob = enginePtr->getBlob(mPorts[indexes[i]]->getName());
+                VLOG(L1, "copyData from IE to Android blob for mNgc->getNodeName([%d])->name %s", indexes[i],
+                     mNgc->getNodeName(indexes[i]).c_str());
+                auto srcBlob = enginePtr->getBlob(mNgc->getNodeName(indexes[i]));
                 uint8_t* dest = outputBlob->buffer().as<uint8_t*>();
                 uint8_t* src = srcBlob->buffer().as<uint8_t*>();
                 std::memcpy(dest, src, outputBlob->byteSize());
@@ -676,13 +497,13 @@ void BasePreparedModel::asyncExecute(const Request& request, MeasureTiming measu
 
     VLOG(L1, "pass request inputs buffer to network/model respectively");
 
-    inOutData(mModel.inputIndexes, request.inputs, true, enginePtr, mPorts);
+    inOutData(mModel.inputIndexes, request.inputs, true, enginePtr);
     VLOG(L1, "Run");
 
     enginePtr->Infer();
 
     VLOG(L1, "pass request outputs buffer to network/model respectively");
-    inOutData(mModel.outputIndexes, request.outputs, false, enginePtr, mPorts);
+    inOutData(mModel.outputIndexes, request.outputs, false, enginePtr);
 
     if (measure == MeasureTiming::YES) deviceEnd = now();
 
@@ -692,10 +513,10 @@ void BasePreparedModel::asyncExecute(const Request& request, MeasureTiming measu
     }
 
     InferenceEngine::TBlob<float>::Ptr outBlob =
-        enginePtr->getBlob(mPorts[mModel.outputIndexes[0]]->getName());
+        enginePtr->getBlob(mNgc->getNodeName(mModel.outputIndexes[0]));
 
     InferenceEngine::TBlob<float>::Ptr inBlob =
-        enginePtr->getBlob(mPorts[mModel.inputIndexes[0]]->getName());
+        enginePtr->getBlob(mNgc->getNodeName(mModel.inputIndexes[0]));
     hidl_vec<OutputShape> outputShapes;
 #ifdef NN_DEBUG
     {
@@ -747,8 +568,7 @@ Return<void> BasePreparedModel::executeSynchronously(const Request& request, Mea
 
     auto inOutData = [this, &requestPoolInfos](const std::vector<uint32_t>& indexes,
                                                const hidl_vec<RequestArgument>& arguments,
-                                               bool inputFromRequest, ExecuteNetwork* enginePtr,
-                                               std::vector<OutputPort> mPorts) {
+                                               bool inputFromRequest, ExecuteNetwork* enginePtr) {
         // do memcpy for input data
         for (size_t i = 0; i < indexes.size(); i++) {
             RunTimeOperandInfo& operand = mOperands[indexes[i]];
@@ -770,22 +590,22 @@ Return<void> BasePreparedModel::executeSynchronously(const Request& request, Mea
                 auto inputBlob = GetInOutOperandAsBlob(
                     operand, const_cast<uint8_t*>(r.buffer + arg.location.offset),
                     operand.length);  // if not doing memcpy
-                VLOG(L1, "Copy inputBlob for mPorts[%d]->name %s", indexes[i],
-                     mCreateNgraph->getNodeName(mPorts[indexes[i]]->getName()).c_str());
+                VLOG(L1, "Copy inputBlob for mNgc->getNodeName([%d])->name %s", indexes[i],
+                     mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])).c_str());
                 auto destBlob = (mUseNgraph == true)
                                     ? enginePtr->getBlob(
-                                          mCreateNgraph->getNodeName(mPorts[indexes[i]]->getName()))
-                                    : enginePtr->getBlob(mPorts[indexes[i]]->getName());
+                                          mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])))
+                                    : enginePtr->getBlob(mNgc->getNodeName(indexes[i]));
                 uint8_t* dest = destBlob->buffer().as<uint8_t*>();
                 uint8_t* src = inputBlob->buffer().as<uint8_t*>();
                 std::memcpy(dest, src, inputBlob->byteSize());
             } else {
-                VLOG(L1, "copyData from IE to Android blob for mPorts[%d]->name %s", indexes[i],
-                     mCreateNgraph->getNodeName(mPorts[indexes[i]]->getName()).c_str());
+                VLOG(L1, "copyData from IE to Android blob for mNgc->getNodeName([%d])->name %s", indexes[i],
+                     mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])).c_str());
                 auto srcBlob = (mUseNgraph == true)
                                    ? enginePtr->getBlob(
-                                         mCreateNgraph->getNodeName(mPorts[indexes[i]]->getName()))
-                                   : enginePtr->getBlob(mPorts[indexes[i]]->getName());
+                                         mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])))
+                                   : enginePtr->getBlob(mNgc->getNodeName(indexes[i]));
                 auto outputBlob = GetInOutOperandAsBlob(
                     operand, const_cast<uint8_t*>(r.buffer + arg.location.offset),
                     operand.length);  // if not doing memcpy
@@ -798,13 +618,13 @@ Return<void> BasePreparedModel::executeSynchronously(const Request& request, Mea
 
     VLOG(L1, "pass request inputs buffer to network/model respectively");
 
-    inOutData(mModel.inputIndexes, request.inputs, true, enginePtr, mPorts);
+    inOutData(mModel.inputIndexes, request.inputs, true, enginePtr);
     VLOG(L1, "Run");
 
     enginePtr->Infer();
 
     VLOG(L1, "pass request outputs buffer to network/model respectively");
-    inOutData(mModel.outputIndexes, request.outputs, false, enginePtr, mPorts);
+    inOutData(mModel.outputIndexes, request.outputs, false, enginePtr);
 
     if (measure == MeasureTiming::YES) deviceEnd = now();
 
@@ -813,15 +633,11 @@ Return<void> BasePreparedModel::executeSynchronously(const Request& request, Mea
         runtimeInfo.update();
     }
 
-    InferenceEngine::TBlob<float>::Ptr outBlob =
-        (mUseNgraph == true) ? enginePtr->getBlob(mCreateNgraph->getNodeName(
-                                   mPorts[mModel.outputIndexes[0]]->getName()))
-                             : enginePtr->getBlob(mPorts[mModel.outputIndexes[0]]->getName());
+    InferenceEngine::TBlob<float>::Ptr outBlob = enginePtr->getBlob(mCreateNgraph->getNodeName(
+                                   mNgc->getNodeName(mModel.outputIndexes[0])));
 
-    InferenceEngine::TBlob<float>::Ptr inBlob =
-        (mUseNgraph == true) ? enginePtr->getBlob(mCreateNgraph->getNodeName(
-                                   mPorts[mModel.inputIndexes[0]]->getName()))
-                             : enginePtr->getBlob(mPorts[mModel.inputIndexes[0]]->getName());
+    InferenceEngine::TBlob<float>::Ptr inBlob =enginePtr->getBlob(mCreateNgraph->getNodeName(
+                                   mNgc->getNodeName(mModel.inputIndexes[0])));
     hidl_vec<OutputShape> outputShapes;
 #ifdef NN_DEBUG
     {

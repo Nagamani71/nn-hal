@@ -32,7 +32,6 @@
 
 #pragma once
 #include <cassert>
-#include "IRDocument.h"
 #include "IRLayer.h"
 #include "file_utils.h"
 #include "ie_common.h"
@@ -406,14 +405,14 @@ inline OutputPort operator+(const OutputPort &a, const OutputPort &b) {
     return output(SumLayer::create(a, b));
 }
 
-inline OutputPort AddConst(IRDocument &doc, const OutputPort &src, const IRBlob::Ptr &biases) {
-    // use const layer with elment wise add
-    auto constNode = Generic("Const");
-    doc.add(constNode);
-    constNode->blobs["custom"] = biases;
-    const auto constOut = addOutput(constNode, src->getTensorDesc().getDims());
-    return src + constOut;
-}
+// inline OutputPort AddConst(IRDocument &doc, const OutputPort &src, const IRBlob::Ptr &biases) {
+//     // use const layer with elment wise add
+//     auto constNode = Generic("Const");
+//     doc.add(constNode);
+//     constNode->blobs["custom"] = biases;
+//     const auto constOut = addOutput(constNode, src->getTensorDesc().getDims());
+//     return src + constOut;
+// }
 
 }  // namespace nnhal
 }  // namespace neuralnetworks

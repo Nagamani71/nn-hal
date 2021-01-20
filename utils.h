@@ -21,7 +21,6 @@
 #include <log/log.h>
 #include "Driver.h"
 #include "IRLayer.h"
-#include "operations/include/ops.h"
 
 // unsigned int debugMask = ((1 << (L1 + 1)) - 1);
 
