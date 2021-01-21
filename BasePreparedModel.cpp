@@ -175,14 +175,14 @@ bool BasePreparedModel::isOperationSupported(const Operation& operation, const M
 
 #define VLOG_CHECKFAIL(fail) VLOG(L1, "Check failed: %s", fail)
 
-    sp<NgraphNetworkCreator> mNgraphNwCreator = NULL;
+    // sp<NgraphNetworkCreator> mNgraphNwCreator;
 
     switch (operation.type) {
 
         case OperationType::ADD: 
         case OperationType::CONCATENATION:{
-            if(!mNgraphNwCreator->validateOperations())
-                return false;
+            // if(!mNgraphNwCreator->validateOperations())
+            //     return false;
         } break;
         
         default:
@@ -592,20 +592,16 @@ Return<void> BasePreparedModel::executeSynchronously(const Request& request, Mea
                     operand.length);  // if not doing memcpy
                 VLOG(L1, "Copy inputBlob for mNgc->getNodeName([%d])->name %s", indexes[i],
                      mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])).c_str());
-                auto destBlob = (mUseNgraph == true)
-                                    ? enginePtr->getBlob(
-                                          mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])))
-                                    : enginePtr->getBlob(mNgc->getNodeName(indexes[i]));
+                auto destBlob = enginePtr->getBlob(
+                                          mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])));
                 uint8_t* dest = destBlob->buffer().as<uint8_t*>();
                 uint8_t* src = inputBlob->buffer().as<uint8_t*>();
                 std::memcpy(dest, src, inputBlob->byteSize());
             } else {
                 VLOG(L1, "copyData from IE to Android blob for mNgc->getNodeName([%d])->name %s", indexes[i],
                      mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])).c_str());
-                auto srcBlob = (mUseNgraph == true)
-                                   ? enginePtr->getBlob(
-                                         mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])))
-                                   : enginePtr->getBlob(mNgc->getNodeName(indexes[i]));
+                auto srcBlob = enginePtr->getBlob(
+                                         mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])));
                 auto outputBlob = GetInOutOperandAsBlob(
                     operand, const_cast<uint8_t*>(r.buffer + arg.location.offset),
                     operand.length);  // if not doing memcpy
