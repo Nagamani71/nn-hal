@@ -28,6 +28,8 @@ bool CpuPreparedModel::initialize(const Model& model) {
     bool success = false;
 
        //NgraphNetworkCreator ngc(mModel, "CPU");
+    if(!mNgc->validateOperations())
+        return false;
     mNgc->initializeModel();//NgraphNetworkCreator
     auto ngraph_function = mNgc->generateGraph();
     InferenceEngine::CNNNetwork ngraph_net = InferenceEngine::CNNNetwork(ngraph_function);
