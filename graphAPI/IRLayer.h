@@ -96,28 +96,6 @@ inline void operator>>(const InferenceEngine::CNNLayerPtr &lhs,
     lhs->outData[0] >> rhs;
 }
 
-template <typename T>
-IRBlob::Ptr readBlobFromFile(const std::string &file) {
-    auto fs = FileUtils::fileSize(file);
-    if (fs <= 0) THROW("blob file ") << file << " not found or empty";
-    InferenceEngine::Precision precision = sizeof(T) == sizeof(short)
-                                               ? InferenceEngine::Precision::FP16
-                                               : InferenceEngine::Precision::FP32;
-    auto ret = typename InferenceEngine::TBlob<T>::Ptr(new InferenceEngine::TBlob<T>(
-        precision, InferenceEngine::C, {static_cast<size_t>(fs / sizeof(T))}));
-    ret->allocate();
-    FileUtils::readAllFile(file, ret->data(), fs);
-    return ret;
-}
-
-template <typename T>
-IRBlob::Ptr readBlobFromFile(const std::string &file, const TensorDims &dims,
-                             InferenceEngine::Layout l) {
-    auto data = readBlobFromFile<T>(file);
-    data->Reshape(dims, l);
-    return data;
-}
-
 }  // namespace nnhal
 }  // namespace neuralnetworks
 }  // namespace hardware
