@@ -27,15 +27,15 @@ bool CpuPreparedModel::initialize(const Model& model) {
     VLOG(L1, "initialize");
     bool success = false;
 
-       //NgraphNetworkCreator ngc(mModel, "CPU");
-    if(!mNgc->validateOperations())
-        return false;
-    mNgc->initializeModel();//NgraphNetworkCreator
+    // NgraphNetworkCreator ngc(mModel, "CPU");
+    if (!mNgc->validateOperations()) return false;
+    mNgc->initializeModel();  // NgraphNetworkCreator
     auto ngraph_function = mNgc->generateGraph();
     InferenceEngine::CNNNetwork ngraph_net = InferenceEngine::CNNNetwork(ngraph_function);
-    ngraph_net.serialize("/data/vendor/neuralnetworks/ngraph_ir.xml", "/data/vendor/neuralnetworks/ngraph_ir.bin");
+    ngraph_net.serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
+                         "/data/vendor/neuralnetworks/ngraph_ir.bin");
 
-     // Check operation supoorted or not, user may not call getOpertionSupported()
+    // Check operation supoorted or not, user may not call getOpertionSupported()
     for (const auto& operation : mModel.operations) {
         success = isOperationSupported(operation, mModel);
         dumpOperationSupport(operation, success);
@@ -154,7 +154,8 @@ IRBlob::Ptr CpuPreparedModel::GetConstWeightsOperandAsTensor(uint32_t index, con
     return nullptr;
 }
 
-IRBlob::Ptr CpuPreparedModel::GetConstOperandAsTensor(int operand_idx, int operation_idx, const Model& model) {
+IRBlob::Ptr CpuPreparedModel::GetConstOperandAsTensor(int operand_idx, int operation_idx,
+                                                      const Model& model) {
     dumpOperand(operand_idx, model);
     const auto op = model.operands[operand_idx];
     uint32_t len;
@@ -251,10 +252,10 @@ Blob::Ptr CpuPreparedModel::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const 
             if (op.dimensions.size() == 4) {
                 order = {0, 3, 1, 2};  // nhwc -> nchw
                 layout = Layout::NCHW;
-            } else if (op.dimensions.size() == 3) {//Inputs are forced to 4D
+            } else if (op.dimensions.size() == 3) {  // Inputs are forced to 4D
                 dims.insert(dims.begin(), 1);
                 order = {0, 3, 1, 2};  // nhwc -> nchw
-                layout = Layout::NCHW; 
+                layout = Layout::NCHW;
             } else if (op.dimensions.size() == 2) {
                 order = {0, 1};
                 layout = Layout::NC;

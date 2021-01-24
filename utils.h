@@ -20,13 +20,11 @@
 #include <android/log.h>
 #include <log/log.h>
 #include "Driver.h"
-#include "IRLayer.h"
+#include "IENetwork.h"
 
 // unsigned int debugMask = ((1 << (L1 + 1)) - 1);
 
 // extern unsigned int debugMask  = ((1 << (L1 + 1)) - 1);
-
-
 
 namespace android {
 namespace hardware {
@@ -87,9 +85,9 @@ enum PaddingScheme {
              size > 2 ? (d)[2] : 0, size > 3 ? (d)[3] : 0);                            \
     } while (0)
 
-#define dumpOperand(index, model)                                      \
+#define dumpOperand(index, model)                               \
     do {                                                        \
-        const auto op = model.operands[index];                 \
+        const auto op = model.operands[index];                  \
         ALOGI("---------------------------------------------"); \
         ALOGI("Operand index: %d", index);                      \
         ALOGI("%s", toString(op).c_str());                      \
@@ -217,6 +215,20 @@ enum PaddingScheme {
 #define EXP_MASK_F32 0x7F800000U
 #define EXP_MASK_F16 0x7C00U
 
+struct GenConvParams {
+    int groups = 1;
+    std::vector<float> weightsBuf;
+    std::vector<size_t> weightsDims;
+    std::vector<float> biasesBuf;
+    std::vector<size_t> biasesDims;
+    size_t weightsSize;
+    std::vector<size_t> strides;
+    std::vector<std::ptrdiff_t> pads_begin;
+    std::vector<std::ptrdiff_t> pads_end;
+    std::vector<size_t> dilations;
+    const char* pad_type;
+};
+
 template <class T>
 using vec = std::vector<T>;
 
@@ -249,11 +261,9 @@ float f16tof32(short x);
 // the denormal values are converted to 0.
 short f32tof16(float x);
 
-void f16tof32Arrays(float* dst, const short* src, uint32_t& nelem, float scale = 1,
-                    float bias = 0);
+void f16tof32Arrays(float* dst, const short* src, uint32_t& nelem, float scale = 1, float bias = 0);
 
-void f32tof16Arrays(short* dst, const float* src, uint32_t& nelem, float scale = 1,
-                    float bias = 0);
+void f32tof16Arrays(short* dst, const float* src, uint32_t& nelem, float scale = 1, float bias = 0);
 
 TensorDims toDims(const vec<uint32_t>& dims);
 

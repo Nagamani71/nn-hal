@@ -138,8 +138,7 @@ Return<void> Driver::getCapabilities_1_2(getCapabilities_1_2_cb cb) {
 
         ALOGI("GPU clDNN driver Capabilities .execTime = 0.95f, .powerUsage = 0.85f");
         cb(ErrorStatus::NONE, capabilities);
-    }
-    else if (mDeviceName.compare("VPU") == 0) {
+    } else if (mDeviceName.compare("VPU") == 0) {
         ALOGI("Myriad driver getCapabilities()");
         Capabilities capabilities = {
             .relaxedFloat32toFloat16PerformanceScalar = {.execTime = 1.1f, .powerUsage = 1.1f},
@@ -148,8 +147,7 @@ Return<void> Driver::getCapabilities_1_2(getCapabilities_1_2_cb cb) {
 
         ALOGI("Myriad driver Capabilities .execTime = 1.1f, .powerUsage = 1.1f");
         cb(ErrorStatus::NONE, capabilities);
-    }
-    else {
+    } else {
         Capabilities capabilities;
         cb(ErrorStatus::DEVICE_UNAVAILABLE, capabilities);
     }
@@ -203,8 +201,7 @@ Return<void> Driver::getSupportedOperations_1_2(const Model& model,
 static sp<BasePreparedModel> ModelFactory(const char* name, const Model& model) {
     sp<BasePreparedModel> driverPreparedModel = NULL;
 
-    if (strcmp(name, "CPU") == 0)
-        driverPreparedModel = new CpuPreparedModel(model);
+    if (strcmp(name, "CPU") == 0) driverPreparedModel = new CpuPreparedModel(model);
     // else if (strcmp(name, "VPU") == 0)
     //     driverPreparedModel = new VpuPreparedModel(model);
     // else if (strcmp(name, "GPU") == 0)

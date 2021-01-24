@@ -178,13 +178,12 @@ bool BasePreparedModel::isOperationSupported(const Operation& operation, const M
     // sp<NgraphNetworkCreator> mNgraphNwCreator;
 
     switch (operation.type) {
-
-        case OperationType::ADD: 
-        case OperationType::CONCATENATION:{
+        case OperationType::ADD:
+        case OperationType::CONCATENATION: {
             // if(!mNgraphNwCreator->validateOperations())
             //     return false;
         } break;
-        
+
         default:
             VLOG(L1, "unsupport operation %d", operation.type);
             return false;
@@ -219,7 +218,7 @@ bool BasePreparedModel::initialize(const Model& model) {
 
 template <typename T>
 T BasePreparedModel::ParseOperationInput(const Model& model, const Operation& operation,
-                                     uint32_t index) {
+                                         uint32_t index) {
     uint32_t inputIndex = operation.inputs[index];
     const auto operand = mModel.operands[inputIndex];
     const auto value = GetConstOperand<T>(model, inputIndex);
@@ -233,7 +232,7 @@ T BasePreparedModel::ParseOperationInput(const Model& model, const Operation& op
 }
 
 const uint8_t* BasePreparedModel::GetOperandMemory(const Model& model, uint32_t index,
-                                               uint32_t& len_out) {
+                                                   uint32_t& len_out) {
     const auto op = model.operands[index];
     len_out = op.location.length;
     if (op.lifetime == OperandLifeTime::CONSTANT_COPY) {
@@ -311,18 +310,6 @@ std::vector<T> BasePreparedModel::GetConstVecFromBuffer(const uint8_t* buf, uint
         buf += sizeof(T);
     }
 
-    return ret;
-}
-
-bool BasePreparedModel::isConst(int index, const Model& model) {
-    VLOG(L1, "---------------------------------------------");
-    VLOG(L1, "Operand index: %d", index);
-    const auto op = model.operands[index];
-    VLOG(L1, " %s", toString(op).c_str());
-    bool ret = (op.lifetime == OperandLifeTime::CONSTANT_COPY ||
-                op.lifetime == OperandLifeTime::CONSTANT_REFERENCE);
-    VLOG(L1, "%s", ret ? "Const" : "Non-Const");
-    VLOG(L1, "---------------------------------------------");
     return ret;
 }
 
@@ -412,7 +399,7 @@ static Return<void> notify(const sp<V1_2::IExecutionCallback>& callback, const E
 
 template <typename T_IExecutionCallback>
 Return<ErrorStatus> BasePreparedModel::executeBase(const Request& request, MeasureTiming measure,
-                                               const sp<T_IExecutionCallback>& callback) {
+                                                   const sp<T_IExecutionCallback>& callback) {
     VLOG(L1, "executebase");
 
     time_point driverStart;
@@ -438,8 +425,8 @@ Return<ErrorStatus> BasePreparedModel::executeBase(const Request& request, Measu
 
 template <typename T_IExecutionCallback>
 void BasePreparedModel::asyncExecute(const Request& request, MeasureTiming measure,
-                                 time_point driverStart,
-                                 const sp<T_IExecutionCallback>& callback) {
+                                     time_point driverStart,
+                                     const sp<T_IExecutionCallback>& callback) {
     std::vector<RunTimePoolInfo> requestPoolInfos;
     if (!setRunTimePoolInfosFromHidlMemories(&requestPoolInfos, request.pools)) {
         notify(callback, ErrorStatus::GENERAL_FAILURE, {}, kNoTiming);
@@ -485,8 +472,8 @@ void BasePreparedModel::asyncExecute(const Request& request, MeasureTiming measu
                 auto outputBlob = GetInOutOperandAsBlob(
                     operand, const_cast<uint8_t*>(r.buffer + arg.location.offset),
                     operand.length);  // if not doing memcpy
-                VLOG(L1, "copyData from IE to Android blob for mNgc->getNodeName([%d])->name %s", indexes[i],
-                     mNgc->getNodeName(indexes[i]).c_str());
+                VLOG(L1, "copyData from IE to Android blob for mNgc->getNodeName([%d])->name %s",
+                     indexes[i], mNgc->getNodeName(indexes[i]).c_str());
                 auto srcBlob = enginePtr->getBlob(mNgc->getNodeName(indexes[i]));
                 uint8_t* dest = outputBlob->buffer().as<uint8_t*>();
                 uint8_t* src = srcBlob->buffer().as<uint8_t*>();
@@ -551,7 +538,7 @@ void BasePreparedModel::asyncExecute(const Request& request, MeasureTiming measu
 }
 
 Return<void> BasePreparedModel::executeSynchronously(const Request& request, MeasureTiming measure,
-                                                 executeSynchronously_cb cb) {
+                                                     executeSynchronously_cb cb) {
     VLOG(L1, "Begin to executeSynchronously");
     time_point driverStart, driverEnd, deviceStart, deviceEnd;
     if (measure == MeasureTiming::YES) driverStart = now();
@@ -592,16 +579,16 @@ Return<void> BasePreparedModel::executeSynchronously(const Request& request, Mea
                     operand.length);  // if not doing memcpy
                 VLOG(L1, "Copy inputBlob for mNgc->getNodeName([%d])->name %s", indexes[i],
                      mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])).c_str());
-                auto destBlob = enginePtr->getBlob(
-                                          mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])));
+                auto destBlob =
+                    enginePtr->getBlob(mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])));
                 uint8_t* dest = destBlob->buffer().as<uint8_t*>();
                 uint8_t* src = inputBlob->buffer().as<uint8_t*>();
                 std::memcpy(dest, src, inputBlob->byteSize());
             } else {
-                VLOG(L1, "copyData from IE to Android blob for mNgc->getNodeName([%d])->name %s", indexes[i],
-                     mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])).c_str());
-                auto srcBlob = enginePtr->getBlob(
-                                         mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])));
+                VLOG(L1, "copyData from IE to Android blob for mNgc->getNodeName([%d])->name %s",
+                     indexes[i], mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])).c_str());
+                auto srcBlob =
+                    enginePtr->getBlob(mCreateNgraph->getNodeName(mNgc->getNodeName(indexes[i])));
                 auto outputBlob = GetInOutOperandAsBlob(
                     operand, const_cast<uint8_t*>(r.buffer + arg.location.offset),
                     operand.length);  // if not doing memcpy
@@ -629,11 +616,11 @@ Return<void> BasePreparedModel::executeSynchronously(const Request& request, Mea
         runtimeInfo.update();
     }
 
-    InferenceEngine::TBlob<float>::Ptr outBlob = enginePtr->getBlob(mCreateNgraph->getNodeName(
-                                   mNgc->getNodeName(mModel.outputIndexes[0])));
+    InferenceEngine::TBlob<float>::Ptr outBlob =
+        enginePtr->getBlob(mCreateNgraph->getNodeName(mNgc->getNodeName(mModel.outputIndexes[0])));
 
-    InferenceEngine::TBlob<float>::Ptr inBlob =enginePtr->getBlob(mCreateNgraph->getNodeName(
-                                   mNgc->getNodeName(mModel.inputIndexes[0])));
+    InferenceEngine::TBlob<float>::Ptr inBlob =
+        enginePtr->getBlob(mCreateNgraph->getNodeName(mNgc->getNodeName(mModel.inputIndexes[0])));
     hidl_vec<OutputShape> outputShapes;
 #ifdef NN_DEBUG
     {
@@ -676,41 +663,44 @@ Return<void> BasePreparedModel::configureExecutionBurst(
 }
 
 Return<ErrorStatus> BasePreparedModel::execute(const Request& request,
-                                           const sp<V1_0::IExecutionCallback>& callback) {
+                                               const sp<V1_0::IExecutionCallback>& callback) {
     VLOG(L1, "Begin to execute");
     return executeBase(request, MeasureTiming::NO, callback);
 }
 
 Return<ErrorStatus> BasePreparedModel::execute_1_2(const Request& request, MeasureTiming measure,
-                                               const sp<V1_2::IExecutionCallback>& callback) {
+                                                   const sp<V1_2::IExecutionCallback>& callback) {
     VLOG(L1, "Begin to execute_1_2");
     return executeBase(request, measure, callback);
 }
 
-IRBlob::Ptr BasePreparedModel::GetConstWeightsOperandAsTensor(uint32_t index, const Model& model) { return nullptr; }
+IRBlob::Ptr BasePreparedModel::GetConstWeightsOperandAsTensor(uint32_t index, const Model& model) {
+    return nullptr;
+}
 
-IRBlob::Ptr BasePreparedModel::GetConstOperandAsTensor(int operand_idx, int operation_idx, const Model& model) {
+IRBlob::Ptr BasePreparedModel::GetConstOperandAsTensor(int operand_idx, int operation_idx,
+                                                       const Model& model) {
     return nullptr;
 }
 
 Blob::Ptr BasePreparedModel::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t* buf,
-                                               uint32_t& len) {
+                                                   uint32_t& len) {
     return nullptr;
 }
 
 template int BasePreparedModel::ParseOperationInput<int>(
-        android::hardware::neuralnetworks::V1_2::Model const&,
-        android::hardware::neuralnetworks::V1_2::Operation const&, unsigned int);
+    android::hardware::neuralnetworks::V1_2::Model const&,
+    android::hardware::neuralnetworks::V1_2::Operation const&, unsigned int);
 template float BasePreparedModel::ParseOperationInput<float>(
-        android::hardware::neuralnetworks::V1_2::Model const&,
-        android::hardware::neuralnetworks::V1_2::Operation const&, unsigned int);
+    android::hardware::neuralnetworks::V1_2::Model const&,
+    android::hardware::neuralnetworks::V1_2::Operation const&, unsigned int);
 
 template int BasePreparedModel::GetConstOperand<int>(
-        android::hardware::neuralnetworks::V1_2::Model const&, unsigned int);
+    android::hardware::neuralnetworks::V1_2::Model const&, unsigned int);
 template int BasePreparedModel::GetConstFromBuffer<int>(unsigned char const*, unsigned int);
 template std::__1::vector<unsigned int, std::__1::allocator<unsigned int> >
-        BasePreparedModel::GetConstVecOperand<unsigned int>(
-                android::hardware::neuralnetworks::V1_2::Model const&, unsigned int);
+BasePreparedModel::GetConstVecOperand<unsigned int>(
+    android::hardware::neuralnetworks::V1_2::Model const&, unsigned int);
 }  // namespace nnhal
 }  // namespace neuralnetworks
 }  // namespace hardware

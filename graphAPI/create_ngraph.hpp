@@ -6,8 +6,6 @@
 #include <ngraph/opsets/opset3.hpp>
 #define NNLOG1
 
-#include "IRLayers.h"
-
 #define LOG_TAG "CreateNgraph"
 #include <android/log.h>
 #include <log/log.h>
@@ -26,7 +24,6 @@ namespace hardware {
 namespace neuralnetworks {
 namespace nnhal {
 class CreateNgraph {
-
 private:
     std::map<std::string, std::shared_ptr<ngraph::Node>> mNodes;
     ngraph::ParameterVector mInputParams;
@@ -35,7 +32,6 @@ private:
 
 public:
     InferenceEngine::CNNNetwork generate(std::string xmlPath, std::string binPath) {
-
         ALOGD("%s : Called with xmlPath %s", __func__, xmlPath.c_str());
 
         auto ngraph_function = std::make_shared<ngraph::Function>(mResultNodes, mInputParams);
@@ -48,7 +44,6 @@ public:
         return cnn;
     }
     void addNode(std::string nodeName, std::shared_ptr<ngraph::Node> node) {
-
         ALOGD("%s : nodeName=%s adding node : %s", __func__, nodeName.c_str(),
               node->get_name().c_str());
 
@@ -56,13 +51,11 @@ public:
         mNodes[nodeName] = node;
     }
     std::string getNodeName(std::string nodeName) {
-
         ALOGD("%s : nodeName=%s ", __func__, nodeName.c_str());
 
         return mNodes[nodeName]->get_name();
     }
     void setResultNode(std::string nodeName) {
-
         ALOGD("%s : nodeName=%s ", __func__, nodeName.c_str());
 
         // Transpose to NHWC for the Result node
@@ -77,7 +70,6 @@ public:
         mResultNodes.push_back(mNodes[nodeName]);
     }
     void addInputParameter(std::string nodeName, std::vector<size_t> shape) {
-
         ALOGD("%s : nodeName=%s ", __func__, nodeName.c_str());
         LOGDIMS(shape, __func__);
 
@@ -87,19 +79,16 @@ public:
         addNode(nodeName, input);
     }
     void addClamp(std::string nodeName, std::string inputName, const double min, const double max) {
-
         ALOGD("%s : nodeName=%s inputName=%s ", __func__, nodeName.c_str(), inputName.c_str());
 
         addNode(nodeName, std::make_shared<ngraph::opset3::Clamp>(mNodes[inputName], min, max));
     }
     void addRelu(std::string nodeName, std::string inputName) {
-
         ALOGD("%s : nodeName=%s inputName=%s ", __func__, nodeName.c_str(), inputName.c_str());
 
         addNode(nodeName, std::make_shared<ngraph::opset3::Relu>(mNodes[inputName]));
     }
     void addReshape(std::string nodeName, std::string inputName, std::vector<size_t> shape) {
-
         ALOGD("%s : nodeName=%s inputName=%s ", __func__, nodeName.c_str(), inputName.c_str());
 
         try {
@@ -150,7 +139,6 @@ public:
         }
     }
     void addConvolution(std::string nodeName, std::string inputName, GenConvParams& gPrms) {
-
         ALOGD("%s : nodeName=%s inputName=%s ", __func__, nodeName.c_str(), inputName.c_str());
         LOGDIMS(gPrms.weightsDims, __func__);
 
@@ -193,7 +181,6 @@ public:
             ALOGE("%s Exception !!! %s", __func__, ex.what());
         }
         if (gPrms.biasesBuf.size() > 0) {
-
             ALOGD("%s : nodeName=%s has biases size %d", __func__, nodeName.c_str(),
                   gPrms.biasesBuf.size());
             LOGDIMS(gPrms.biasesDims, __func__);

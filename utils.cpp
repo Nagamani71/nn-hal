@@ -21,7 +21,6 @@
 
 // inline unsigned int debugMask = ((1 << (L1 + 1)) - 1);
 
-
 // F32: exp_bias:127 SEEEEEEE EMMMMMMM MMMMMMMM MMMMMMMM.
 // F16: exp_bias:15  SEEEEEMM MMMMMMMM
 #define EXP_MASK_F32 0x7F800000U
@@ -269,8 +268,7 @@ short f32tof16(float x) {
     return v.u | s;
 }
 
-void f16tof32Arrays(float* dst, const short* src, uint32_t& nelem, float scale,
-                    float bias) {
+void f16tof32Arrays(float* dst, const short* src, uint32_t& nelem, float scale, float bias) {
     VLOG(L1, "convert f16tof32Arrays...\n");
     const short* _src = reinterpret_cast<const short*>(src);
 
@@ -279,8 +277,7 @@ void f16tof32Arrays(float* dst, const short* src, uint32_t& nelem, float scale,
     }
 }
 
-void f32tof16Arrays(short* dst, const float* src, uint32_t& nelem, float scale,
-                    float bias) {
+void f32tof16Arrays(short* dst, const float* src, uint32_t& nelem, float scale, float bias) {
     VLOG(L1, "convert f32tof16Arrays...");
     for (uint32_t i = 0; i < nelem; i++) {
         dst[i] = f32tof16(src[i] * scale + bias);
@@ -393,7 +390,7 @@ size_t product(const vec<T>& dims) {
     size_t rc = 1;
     for (auto d : dims) rc *= d;
     return rc;
-} 
+}
 
 TensorDims permuteDims(const TensorDims& src, const vec<unsigned int>& order) {
     TensorDims ret;
@@ -418,7 +415,6 @@ size_t sizeOfTensor(const TensorDims& dims) {
     for (int i = 1; i < dims.size(); ++i) ret *= dims[i];
     return ret;
 }
-
 
 }  // namespace nnhal
 }  // namespace neuralnetworks

@@ -5,10 +5,6 @@ cc_library_static {
     owner: "intel",
     compile_multilib: "64",
 
-    srcs: [
-        "IRLayer.cpp",
-    ],
-
     header_libs: [
         "libngraph_headers",
         "libinference_headers",

@@ -23,20 +23,19 @@ void GnaPreparedModel::deinitialize() {
     VLOG(L1, "free engine");
 }
 
-bool GnaPreparedModel::initialize(const Model& model) {
+bool GnaPreparedModel::initialize(const Model &model) {
     VLOG(L1, "initialize");
     bool success = false;
 
-    
-    //NgraphNetworkCreator ngc(mModel, "CPU");
-    mNgc->initializeModel();//NgraphNetworkCreator
+    // NgraphNetworkCreator ngc(mModel, "CPU");
+    mNgc->initializeModel();  // NgraphNetworkCreator
     auto ngraph_function = mNgc->generateGraph();
     InferenceEngine::CNNNetwork ngraph_net = InferenceEngine::CNNNetwork(ngraph_function);
-    ngraph_net.serialize("/data/vendor/neuralnetworks/ngraph_ir.xml", "/data/vendor/neuralnetworks/ngraph_ir.bin");
+    ngraph_net.serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
+                         "/data/vendor/neuralnetworks/ngraph_ir.bin");
 
-
-     // Check operation supoorted or not, user may not call getOpertionSupported()
-    for (const auto& operation : mModel.operations) {
+    // Check operation supoorted or not, user may not call getOpertionSupported()
+    for (const auto &operation : mModel.operations) {
         success = isOperationSupported(operation, mModel);
         dumpOperationSupport(operation, success);
         if (!success) {
@@ -63,31 +62,26 @@ bool GnaPreparedModel::initialize(const Model& model) {
     enginePtr->loadNetwork(ngraph_net);
 
     return true;
-
 }
 
-IRBlob::Ptr GnaPreparedModel::GetConstWeightsOperandAsTensor(uint32_t index, const Model& model)
-{
+IRBlob::Ptr GnaPreparedModel::GetConstWeightsOperandAsTensor(uint32_t index, const Model &model) {
     dumpOperand(index, model);
     const auto op = model.operands[index];
     uint32_t len;
     const uint8_t *buf = GetOperandMemory(model, index, len);
 
     if (op.type == OperandType::TENSOR_FLOAT32 || op.type == OperandType::FLOAT32) {
-        if (buf == nullptr)
-            VLOG(L1, "TENSOR_FLOAT32 buf is NULL !!!!!!!!!!!!!!!");
+        if (buf == nullptr) VLOG(L1, "TENSOR_FLOAT32 buf is NULL !!!!!!!!!!!!!!!");
 
         vec<unsigned int> order;
         Layout layout;
         if (op.dimensions.size() == 4) {
-            order = {3,0,1,2};  //IHWO -> OIHW for depth conv
-            layout = Layout::OIHW; //weights layout
-        }
-        else if (op.dimensions.size() == 2) {
+            order = {3, 0, 1, 2};   // IHWO -> OIHW for depth conv
+            layout = Layout::OIHW;  // weights layout
+        } else if (op.dimensions.size() == 2) {
             order = {0, 1};
             layout = Layout::NC;
-        }
-        else {
+        } else {
             order = {0};
             layout = Layout::C;
         }
@@ -98,20 +92,19 @@ IRBlob::Ptr GnaPreparedModel::GetConstWeightsOperandAsTensor(uint32_t index, con
             uint32_t op_dimensions_size = 2;
             std::vector<uint32_t> op_dimensions = {op.dimensions[0], channel_size};
             inputDims = toDims(op_dimensions);
-        }
-        else {
+        } else {
             inputDims = toDims(op.dimensions);
         }
 
         TensorDesc td(InferenceEngine::Precision::FP32, permuteDims(inputDims, order), layout);
         if (inputDims.size() != 4) {
             InferenceEngine::TBlob<float>::Ptr blob =
-                                std::make_shared<InferenceEngine::TBlob<float>>(td, (float *)buf, len);
+                std::make_shared<InferenceEngine::TBlob<float>>(td, (float *)buf, len);
             blob->allocate();
             return blob;
         } else {
             InferenceEngine::TBlob<float>::Ptr blob =
-                                    std::make_shared<InferenceEngine::TBlob<float>>(td);
+                std::make_shared<InferenceEngine::TBlob<float>>(td);
             blob->allocate();
 
             auto dims_ohwi = inputDims;
@@ -120,20 +113,19 @@ IRBlob::Ptr GnaPreparedModel::GetConstWeightsOperandAsTensor(uint32_t index, con
             size_t height = dims_ohwi[1];
             size_t width = dims_ohwi[2];
             size_t offset = 0;
-            const float* inputFilter = reinterpret_cast<const float *>(buf);
+            const float *inputFilter = reinterpret_cast<const float *>(buf);
 
-            //convert OHWI -> OIHW
-            //for depth conv need reorder as IOHW since for tflite O is always 1 and IE expects reorder to
-            //[in_channels, depth_multiplier, filter_height, filter_width]
+            // convert OHWI -> OIHW
+            // for depth conv need reorder as IOHW since for tflite O is always 1 and IE expects
+            // reorder to [in_channels, depth_multiplier, filter_height, filter_width]
             for (size_t i = 0; i < in_depth; i++) {
                 for (size_t o = 0; o < out_depth; o++) {
                     for (size_t h = 0; h < height; h++) {
                         for (size_t w = 0; w < width; w++) {
-                            //similar to NHWC memory layout
-                            size_t offset_ohwi = o*height*width*in_depth +
-                                                 h*width*in_depth +
-                                                 w*in_depth + i;
-                            blob->buffer().as<float*>()[offset++] = inputFilter[offset_ohwi];
+                            // similar to NHWC memory layout
+                            size_t offset_ohwi = o * height * width * in_depth +
+                                                 h * width * in_depth + w * in_depth + i;
+                            blob->buffer().as<float *>()[offset++] = inputFilter[offset_ohwi];
                         }
                     }
                 }
@@ -141,8 +133,7 @@ IRBlob::Ptr GnaPreparedModel::GetConstWeightsOperandAsTensor(uint32_t index, con
             return blob;
         }
     } else if (op.type == OperandType::TENSOR_INT32) {
-        if (buf == nullptr)
-            VLOG(L1, "TENSOR_INT32 buf is NULL !!!!!!!!!!!!!!!");
+        if (buf == nullptr) VLOG(L1, "TENSOR_INT32 buf is NULL !!!!!!!!!!!!!!!");
 
         TensorDesc td(InferenceEngine::Precision::I32, toDims(op.dimensions), Layout::ANY);
         return std::make_shared<InferenceEngine::TBlob<float>>(td, (float *)buf, len);
@@ -153,8 +144,8 @@ IRBlob::Ptr GnaPreparedModel::GetConstWeightsOperandAsTensor(uint32_t index, con
     return nullptr;
 }
 
-IRBlob::Ptr GnaPreparedModel::GetConstOperandAsTensor(int operand_index, int operation_idx, const Model& model)
-{
+IRBlob::Ptr GnaPreparedModel::GetConstOperandAsTensor(int operand_index, int operation_idx,
+                                                      const Model &model) {
     dumpOperand(operand_index, model);
     const auto op = model.operands[operand_index];
     uint32_t len;
@@ -165,8 +156,8 @@ IRBlob::Ptr GnaPreparedModel::GetConstOperandAsTensor(int operand_index, int ope
         vec<unsigned int> order;
         Layout layout;
         if (op.dimensions.size() == 4) {
-            order = {0,3,1,2};  //nhwc -> nchw
-            layout = Layout::OIHW; //weights layout
+            order = {0, 3, 1, 2};   // nhwc -> nchw
+            layout = Layout::OIHW;  // weights layout
         } else if (op.dimensions.size() == 2 || op.dimensions.size() == 3) {
             order = {0, 1};
             layout = Layout::NC;
@@ -189,17 +180,17 @@ IRBlob::Ptr GnaPreparedModel::GetConstOperandAsTensor(int operand_index, int ope
         if (buf == nullptr) {
             VLOG(L1, "TENSOR_FLOAT32 buf is NULL !!!!!!!!!!!!!!!");
             InferenceEngine::TBlob<float>::Ptr blob =
-                                            std::make_shared<InferenceEngine::TBlob<float>>(td);
+                std::make_shared<InferenceEngine::TBlob<float>>(td);
             blob->allocate();
             return blob;
         } else {
             if (inputDims.size() != 4) {
                 InferenceEngine::TBlob<float>::Ptr blob =
-                            std::make_shared<InferenceEngine::TBlob<float>>(td, (float *)buf, len);
+                    std::make_shared<InferenceEngine::TBlob<float>>(td, (float *)buf, len);
                 return blob;
             } else {
                 InferenceEngine::TBlob<float>::Ptr blob =
-                                    std::make_shared<InferenceEngine::TBlob<float>>(td);
+                    std::make_shared<InferenceEngine::TBlob<float>>(td);
                 blob->allocate();
 
                 auto dims_ohwi = inputDims;
@@ -208,17 +199,17 @@ IRBlob::Ptr GnaPreparedModel::GetConstOperandAsTensor(int operand_index, int ope
                 size_t height = dims_ohwi[1];
                 size_t width = dims_ohwi[2];
                 size_t offset = 0;
-                const float* inputFilter = reinterpret_cast<const float *>(buf); //OHWI memory layout
+                const float *inputFilter =
+                    reinterpret_cast<const float *>(buf);  // OHWI memory layout
 
                 for (size_t o = 0; o < out_depth; o++) {
                     for (size_t i = 0; i < in_depth; i++) {
                         for (size_t h = 0; h < height; h++) {
                             for (size_t w = 0; w < width; w++) {
-                                //similar to NHWC memory layout
-                                size_t offset_ohwi = o*height*width*in_depth +
-                                                     h*width*in_depth +
-                                                     w*in_depth + i;
-                                blob->buffer().as<float*>()[offset++] = inputFilter[offset_ohwi];
+                                // similar to NHWC memory layout
+                                size_t offset_ohwi = o * height * width * in_depth +
+                                                     h * width * in_depth + w * in_depth + i;
+                                blob->buffer().as<float *>()[offset++] = inputFilter[offset_ohwi];
                             }
                         }
                     }
@@ -227,8 +218,7 @@ IRBlob::Ptr GnaPreparedModel::GetConstOperandAsTensor(int operand_index, int ope
             }
         }
     } else if (op.type == OperandType::TENSOR_INT32) {
-        if (buf == nullptr)
-            VLOG(L1, "TENSOR_INT32 buf is NULL !!!!!!!!!!!!!!!");
+        if (buf == nullptr) VLOG(L1, "TENSOR_INT32 buf is NULL !!!!!!!!!!!!!!!");
 
         TensorDesc td(InferenceEngine::Precision::I32, toDims(op.dimensions), Layout::ANY);
         return std::make_shared<InferenceEngine::TBlob<float>>(td, (float *)buf, len);
@@ -239,30 +229,27 @@ IRBlob::Ptr GnaPreparedModel::GetConstOperandAsTensor(int operand_index, int ope
     return nullptr;
 }
 
-Blob::Ptr GnaPreparedModel::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t *buf, uint32_t& len)
-{
+Blob::Ptr GnaPreparedModel::GetInOutOperandAsBlob(RunTimeOperandInfo &op, const uint8_t *buf,
+                                                  uint32_t &len) {
     if (op.type == OperandType::TENSOR_FLOAT32 || op.type == OperandType::FLOAT32) {
         if (op.lifetime == OperandLifeTime::MODEL_INPUT) {
             std::vector<uint32_t> dims(op.dimensions.begin(), op.dimensions.end());
-            if (buf == nullptr)
-                VLOG(L1, "MODEL_INPUT buf is NULL !!!!!!!!!!!!!!!");
+            if (buf == nullptr) VLOG(L1, "MODEL_INPUT buf is NULL !!!!!!!!!!!!!!!");
 
             vec<unsigned int> order;
             Layout layout;
             if (op.dimensions.size() == 4) {
-                order = {0,3,1,2};  //nhwc -> nchw
+                order = {0, 3, 1, 2};  // nhwc -> nchw
                 layout = Layout::NCHW;
-            } else if (op.dimensions.size() == 3) {//Inputs are forced to 4D
+            } else if (op.dimensions.size() == 3) {  // Inputs are forced to 4D
                 dims.insert(dims.begin(), 1);
                 order = {0, 3, 1, 2};  // nhwc -> nchw
-                layout = Layout::NCHW; 
-            }
-            else if (op.dimensions.size() == 2) {
+                layout = Layout::NCHW;
+            } else if (op.dimensions.size() == 2) {
                 order = {0, 1};
                 layout = Layout::NC;
-            }
-            else {
-                order = {0}; //(op.dimensions.size() < 2)
+            } else {
+                order = {0};  //(op.dimensions.size() < 2)
                 layout = Layout::C;
             }
 
@@ -271,35 +258,34 @@ Blob::Ptr GnaPreparedModel::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const 
             auto inputDims = toDims(dims);
             TensorDesc td(InferenceEngine::Precision::FP32, permuteDims(inputDims, order), layout);
             if (inputDims.size() != 4) {
-                //VLOG(L1, "buf data %f", *((float*)buf));
-                //VLOG(L1, "buf data %f", *((float*)buf + 1));
+                // VLOG(L1, "buf data %f", *((float*)buf));
+                // VLOG(L1, "buf data %f", *((float*)buf + 1));
                 InferenceEngine::TBlob<float>::Ptr blob =
-                                std::make_shared<InferenceEngine::TBlob<float>>(td, (float *)buf, len);
+                    std::make_shared<InferenceEngine::TBlob<float>>(td, (float *)buf, len);
                 blob->allocate();
                 return blob;
             } else {
                 InferenceEngine::TBlob<float>::Ptr blob =
-                                            std::make_shared<InferenceEngine::TBlob<float>>(td);
+                    std::make_shared<InferenceEngine::TBlob<float>>(td);
                 blob->allocate();
 
-                auto dims_nhwc = inputDims; //toDims(op.dimensions);
+                auto dims_nhwc = inputDims;  // toDims(op.dimensions);
                 size_t batch = dims_nhwc[0];
-                size_t in_depth = dims_nhwc[3]; //channels
+                size_t in_depth = dims_nhwc[3];  // channels
                 size_t height = dims_nhwc[1];
                 size_t width = dims_nhwc[2];
                 size_t offset = 0;
-                const float* input = reinterpret_cast<const float *>(buf); //OHWI memory layout
+                const float *input = reinterpret_cast<const float *>(buf);  // OHWI memory layout
 
-                //convert NHWC -> NCHW
+                // convert NHWC -> NCHW
                 for (size_t b = 0; b < batch; b++) {
                     for (size_t i = 0; i < in_depth; i++) {
                         for (size_t h = 0; h < height; h++) {
                             for (size_t w = 0; w < width; w++) {
-                                //similar to NHWC memory layout
-                                size_t offset_nhwc = b*height*width*in_depth +
-                                                     h*width*in_depth +
-                                                     w*in_depth + i;
-                                blob->buffer().as<float*>()[offset++] = input[offset_nhwc];
+                                // similar to NHWC memory layout
+                                size_t offset_nhwc = b * height * width * in_depth +
+                                                     h * width * in_depth + w * in_depth + i;
+                                blob->buffer().as<float *>()[offset++] = input[offset_nhwc];
                             }
                         }
                     }
@@ -307,8 +293,7 @@ Blob::Ptr GnaPreparedModel::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const 
                 return blob;
             }
         } else if (op.lifetime == OperandLifeTime::MODEL_OUTPUT) {
-            if (buf == nullptr)
-                VLOG(L1, "MODEL_OUTPUT buf is NULL !!!!!!!!!!!!!!!");
+            if (buf == nullptr) VLOG(L1, "MODEL_OUTPUT buf is NULL !!!!!!!!!!!!!!!");
 
             vec<unsigned int> order;
             Layout layout;
@@ -320,9 +305,9 @@ Blob::Ptr GnaPreparedModel::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const 
                 layout = Layout::C;
             }
 
-            TensorDesc td(InferenceEngine::Precision::FP32, toDims(op.dimensions), layout); //nhwc
+            TensorDesc td(InferenceEngine::Precision::FP32, toDims(op.dimensions), layout);  // nhwc
             InferenceEngine::TBlob<float>::Ptr blob =
-                            InferenceEngine::make_shared_blob<float>(td, (float *)buf, len);
+                InferenceEngine::make_shared_blob<float>(td, (float *)buf, len);
             return blob;
         }
     } else if (op.type == OperandType::TENSOR_INT32) {
@@ -334,7 +319,6 @@ Blob::Ptr GnaPreparedModel::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const 
     }
     return nullptr;
 }
-
 
 }  // namespace nnhal
 }  // namespace neuralnetworks

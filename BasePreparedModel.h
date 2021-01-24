@@ -26,12 +26,11 @@
 #include <fstream>
 #include <string>
 
-#include "Driver.h"
-#include "utils.h"
-#include "create_ngraph.hpp"
 #include <NgraphNetworkCreator.hpp>
+#include "Driver.h"
 #include "IENetwork.h"
-
+#include "create_ngraph.hpp"
+#include "utils.h"
 
 // #define PARAM_I32(i) ParseOperationInput<int32_t>(mModel, operation, i)
 // #define PARAM_FP(i) ParseOperationInput<float>(mModel, operation, i)
@@ -49,6 +48,8 @@ namespace neuralnetworks {
 namespace nnhal {
 namespace {
 
+InferenceEngine::Precision g_layer_precision = InferenceEngine::Precision::UNSPECIFIED;
+
 using time_point = std::chrono::steady_clock::time_point;
 
 auto now() { return std::chrono::steady_clock::now(); };
@@ -57,7 +58,7 @@ auto microsecondsDuration(decltype(now()) end, decltype(now()) start) {
     return std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 };
 
-}
+}  // namespace
 
 template <class T>
 using vec = std::vector<T>;
@@ -85,10 +86,10 @@ struct RunTimeOperandInfo {
     Operand::ExtraParams extraParams;
     Shape shape() const {
         return {
-                .type = type,
-                .dimensions = dimensions,
-                .scale = scale,
-                .offset = zeroPoint,
+            .type = type,
+            .dimensions = dimensions,
+            .scale = scale,
+            .offset = zeroPoint,
         };
     }
 };
@@ -107,88 +108,83 @@ bool setRunTimePoolInfosFromHidlMemories(std::vector<RunTimePoolInfo>* poolInfos
                                          const hidl_vec<hidl_memory>& pools);
 
 // template <typename T_IExecutionCallback>;
-class BasePreparedModel : public V1_2::IPreparedModel{
-    public:
-        BasePreparedModel(const Model& model)
-        : mTargetDevice("CPU"),
-          mModel(model),
-          enginePtr(nullptr){
+class BasePreparedModel : public V1_2::IPreparedModel {
+public:
+    BasePreparedModel(const Model& model)
+        : mTargetDevice("CPU"), mModel(model), enginePtr(nullptr) {
+        g_layer_precision = InferenceEngine::Precision::FP16;
+        mUseNgraph =
+            isNgraphPropSet();  // TODO:Should additionally check if all the ops are supported
+        mCreateNgraph = std::make_shared<CreateNgraph>();
+        mNgc = std::make_shared<NgraphNetworkCreator>(mModel, mTargetDevice);
+    }
+    BasePreparedModel(const std::string device, const Model& model)
+        : mTargetDevice(device), mModel(model), enginePtr(nullptr) {
+        if (mTargetDevice == "CPU" || mTargetDevice == "GPU")
+            g_layer_precision = InferenceEngine::Precision::FP32;
+        else if (mTargetDevice == "MYRIAD")
             g_layer_precision = InferenceEngine::Precision::FP16;
-            mUseNgraph =
-                isNgraphPropSet();  // TODO:Should additionally check if all the ops are supported
-            mCreateNgraph = std::make_shared<CreateNgraph>();
-            mNgc = std::make_shared<NgraphNetworkCreator>(mModel, mTargetDevice);
-        }
-        BasePreparedModel(const std::string device, const Model& model)
-        : mTargetDevice(device),
-          mModel(model),
-          enginePtr(nullptr) {
-            if (mTargetDevice == "CPU" || mTargetDevice == "GPU")
-                g_layer_precision = InferenceEngine::Precision::FP32;
-            else if (mTargetDevice == "MYRIAD")
-                g_layer_precision = InferenceEngine::Precision::FP16;
-            else
-                g_layer_precision = InferenceEngine::Precision::UNSPECIFIED;
-            mUseNgraph = isNgraphPropSet();
-            mCreateNgraph = std::make_shared<CreateNgraph>();
-            mNgc = std::make_shared<NgraphNetworkCreator>(mModel, mTargetDevice);
-        }
+        else
+            g_layer_precision = InferenceEngine::Precision::UNSPECIFIED;
+        mUseNgraph = isNgraphPropSet();
+        mCreateNgraph = std::make_shared<CreateNgraph>();
+        mNgc = std::make_shared<NgraphNetworkCreator>(mModel, mTargetDevice);
+    }
 
-        virtual ~BasePreparedModel() { deinitialize(); }
+    virtual ~BasePreparedModel() { deinitialize(); }
 
-        Return<ErrorStatus> execute(const Request& request,
+    Return<ErrorStatus> execute(const Request& request,
                                 const sp<V1_0::IExecutionCallback>& callback) override;
-        Return<ErrorStatus> execute_1_2(const Request& request, MeasureTiming measure,
-                                        const sp<V1_2::IExecutionCallback>& callback) override;
-        Return<void> executeSynchronously(const Request& request, MeasureTiming measure,
-                                        executeSynchronously_cb cb) override;
-        Return<void> configureExecutionBurst(
-            const sp<V1_2::IBurstCallback>& callback,
-            const MQDescriptorSync<V1_2::FmqRequestDatum>& requestChannel,
-            const MQDescriptorSync<V1_2::FmqResultDatum>& resultChannel,
-            configureExecutionBurst_cb cb) override;
+    Return<ErrorStatus> execute_1_2(const Request& request, MeasureTiming measure,
+                                    const sp<V1_2::IExecutionCallback>& callback) override;
+    Return<void> executeSynchronously(const Request& request, MeasureTiming measure,
+                                      executeSynchronously_cb cb) override;
+    Return<void> configureExecutionBurst(
+        const sp<V1_2::IBurstCallback>& callback,
+        const MQDescriptorSync<V1_2::FmqRequestDatum>& requestChannel,
+        const MQDescriptorSync<V1_2::FmqResultDatum>& resultChannel,
+        configureExecutionBurst_cb cb) override;
 
-        static bool isOperationSupported(const Operation& operation, const Model& model);
-        virtual bool initialize(const Model& model);
-        bool isConst(int index, const Model& model);
-        template <typename T>
-        T ParseOperationInput(const Model& model, const Operation& operation, uint32_t index);
-        template <typename T>
-        std::vector<T> GetConstVecOperand(const Model& model, uint32_t index); //for reshape
+    static bool isOperationSupported(const Operation& operation, const Model& model);
+    virtual bool initialize(const Model& model);
+    template <typename T>
+    T ParseOperationInput(const Model& model, const Operation& operation, uint32_t index);
+    template <typename T>
+    std::vector<T> GetConstVecOperand(const Model& model, uint32_t index);  // for reshape
 
 protected:
-        virtual void deinitialize();
-        bool initializeRunTimeOperandInfo();
-        template <typename T>
-        T GetConstOperand(const Model& model, uint32_t index);
+    virtual void deinitialize();
+    bool initializeRunTimeOperandInfo();
+    template <typename T>
+    T GetConstOperand(const Model& model, uint32_t index);
 
-        template <typename T>
-        T GetConstFromBuffer(const uint8_t* buf, uint32_t len);
-        template <typename T>
-        std::vector<T> GetConstVecFromBuffer(const uint8_t* buf, uint32_t len);
-        const uint8_t* GetOperandMemory(const Model& model, uint32_t index, uint32_t& len_out);
-        virtual Blob::Ptr GetConstWeightsOperandAsTensor(uint32_t index, const Model& model);
-        virtual Blob::Ptr GetConstOperandAsTensor(int operand_index, int operation_idx, const Model& model);
-        virtual Blob::Ptr GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t* buf,
+    template <typename T>
+    T GetConstFromBuffer(const uint8_t* buf, uint32_t len);
+    template <typename T>
+    std::vector<T> GetConstVecFromBuffer(const uint8_t* buf, uint32_t len);
+    const uint8_t* GetOperandMemory(const Model& model, uint32_t index, uint32_t& len_out);
+    virtual Blob::Ptr GetConstWeightsOperandAsTensor(uint32_t index, const Model& model);
+    virtual Blob::Ptr GetConstOperandAsTensor(int operand_index, int operation_idx,
+                                              const Model& model);
+    virtual Blob::Ptr GetInOutOperandAsBlob(RunTimeOperandInfo& op, const uint8_t* buf,
                                             uint32_t& len);
-        template <typename T_IExecutionCallback>
-        Return<ErrorStatus> executeBase(const Request& request, MeasureTiming measure,
-                                               const sp<T_IExecutionCallback>& callback);
-        template <typename T_IExecutionCallback>
-        void asyncExecute(const Request& request, MeasureTiming measure,
-                                 time_point driverStart,
-                                 const sp<T_IExecutionCallback>& callback);
-        // OutputPort getPort(int index);
+    template <typename T_IExecutionCallback>
+    Return<ErrorStatus> executeBase(const Request& request, MeasureTiming measure,
+                                    const sp<T_IExecutionCallback>& callback);
+    template <typename T_IExecutionCallback>
+    void asyncExecute(const Request& request, MeasureTiming measure, time_point driverStart,
+                      const sp<T_IExecutionCallback>& callback);
+    // OutputPort getPort(int index);
 
-        std::shared_ptr<NgraphNetworkCreator> mNgc;
-        std::string mTargetDevice;
-        Model mModel;
-        std::vector<RunTimeOperandInfo> mOperands;
-        std::vector<RunTimePoolInfo> mPoolInfos;
-        ExecuteNetwork* enginePtr;
-        std::shared_ptr<CreateNgraph> mCreateNgraph;
+    std::shared_ptr<NgraphNetworkCreator> mNgc;
+    std::string mTargetDevice;
+    Model mModel;
+    std::vector<RunTimeOperandInfo> mOperands;
+    std::vector<RunTimePoolInfo> mPoolInfos;
+    ExecuteNetwork* enginePtr;
+    std::shared_ptr<CreateNgraph> mCreateNgraph;
 
-        bool mUseNgraph = true;
+    bool mUseNgraph = true;
 };
 
 }  // namespace nnhal
