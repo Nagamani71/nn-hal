@@ -18,8 +18,8 @@ void NgraphNetworkCreator::createInputParams() {
         std::shared_ptr<ngraph::opset3::Parameter> inputParam;
         auto& origDims = mModel.operands[i].dimensions;
         std::vector<size_t> dims(origDims.begin(), origDims.end());
-        if (dims.size() == 3) {
-            ALOGD("createInputParams converting operand %d to 4D", i);
+        if (dims.size() == 3) {  // TODO:Handle other dims size too
+            ALOGI("createInputParams converting operand %d to 4D", i);
             dims.insert(dims.begin(), 1);
         }
         switch (mModel.operands[i].type) {
@@ -27,7 +27,7 @@ void NgraphNetworkCreator::createInputParams() {
             case OperandType::TENSOR_FLOAT32:
                 inputParam = std::make_shared<ngraph::opset3::Parameter>(
                     ngraph::element::f32, ngraph::Shape(dims.begin(), dims.end()));
-                ALOGD("createInputParams created inputIndex %d, type %d", i,
+                ALOGV("createInputParams created inputIndex %d, type %d", i,
                       mModel.operands[i].type);
                 break;
             default:
@@ -35,7 +35,7 @@ void NgraphNetworkCreator::createInputParams() {
                       mModel.operands[i].type);
                 inputParam = nullptr;
         }
-        mNgraphNodes->addInputParam(inputParam);
+        mNgraphNodes->addInputParam(i, inputParam);
         mNgraphNodes->setOperationOutput(i, inputParam);
     }
 }
@@ -53,24 +53,23 @@ bool NgraphNetworkCreator::initializeModel() {
     for (const auto& operation : mModel.operations) {
         auto op = mOpFctryInst.getOperation(operation.type, mModel);
         if (op == nullptr) {
-            ALOGD("initializeModel Failure at type %d", operation.type);
+            ALOGE("initializeModel Failure at type %d", operation.type);
             return false;
         }
-        mNgraphNodes->setOperationOutput(
-            operation.outputs[0],  // TODO: Handle multiple Outputs(eg.LSTM). Assumption here : each
-                                   // node has only 1 output.
-            op->createNodeForPlugin(operation));
+        op->connectOperationToGraph(operation);
     }
     ALOGD("initializeModel Success");
     return true;
 }
 
 const std::string& NgraphNetworkCreator::getNodeName(uint32_t index) {
+    ALOGD("getNodeName %d", index);
     return mNgraphNodes->getNodeName(index);
 }
 
 std::shared_ptr<ngraph::Function> NgraphNetworkCreator::generateGraph() {
     for (auto i : mModel.outputIndexes) {
+        ALOGD("setResultNode %d", i);
         mNgraphNodes->setResultNode(i);
     }
     return mNgraphNodes->generateGraph();

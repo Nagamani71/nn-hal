@@ -115,4 +115,4 @@ protected:
 }  // namespace hardware
 }  // namespace android
 
-#endif  // ANDROID_ML_NN_VPU_DRIVER_H
+#endif  // ANDROID_ML_NN_DRIVER_H

@@ -32,12 +32,6 @@
 #include "create_ngraph.hpp"
 #include "utils.h"
 
-// #define PARAM_I32(i) ParseOperationInput<int32_t>(mModel, operation, i)
-// #define PARAM_FP(i) ParseOperationInput<float>(mModel, operation, i)
-
-#define PARAM_I32(mModel, operation, i) ParseOperationInput<int32_t>(mModel, operation, i)
-#define PARAM_FP(i) ParseOperationInput<float>(mModel, operation, i)
-
 using ::android::hardware::MQDescriptorSync;
 using ::android::hidl::memory::V1_0::IMemory;
 using namespace InferenceEngine;
@@ -107,7 +101,6 @@ struct RunTimePoolInfo {
 bool setRunTimePoolInfosFromHidlMemories(std::vector<RunTimePoolInfo>* poolInfos,
                                          const hidl_vec<hidl_memory>& pools);
 
-// template <typename T_IExecutionCallback>;
 class BasePreparedModel : public V1_2::IPreparedModel {
 public:
     BasePreparedModel(const Model& model)
@@ -174,7 +167,6 @@ protected:
     template <typename T_IExecutionCallback>
     void asyncExecute(const Request& request, MeasureTiming measure, time_point driverStart,
                       const sp<T_IExecutionCallback>& callback);
-    // OutputPort getPort(int index);
 
     std::shared_ptr<NgraphNetworkCreator> mNgc;
     std::string mTargetDevice;
