@@ -125,7 +125,7 @@ public:
 
     template <typename T>
     std::vector<T> GetConstVecOperand(uint32_t index) {
-        dumpOperand(index, mModel);
+        // dumpOperand(index, mModel);
         uint32_t len;
         const uint8_t* buf = GetOperandMemory(index, len);
         return GetConstVecFromBuffer<T>(buf, len);

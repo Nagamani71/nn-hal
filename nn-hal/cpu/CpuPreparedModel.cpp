@@ -46,8 +46,8 @@ bool CpuPreparedModel::initialize(const Model& model) {
 
     ALOGI("Generating IR Graph");
     mNet = mNgc->generateIRGraph();
-    // mNet.serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
-    //                      "/data/vendor/neuralnetworks/ngraph_ir.bin");
+    mNet->serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
+                         "/data/vendor/neuralnetworks/ngraph_ir.bin");
     mPlugin = new IENetwork(mNet);
     mPlugin->loadNetwork();
     // ALOGI("initialize ExecuteNetwork for device %s", mTargetDevice.c_str());

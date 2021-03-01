@@ -97,7 +97,7 @@ bool NnapiModelInfo::initializeRunTimeOperandInfo() {
 // TODO: Move it to Utils class
 template <typename T>
 T NnapiModelInfo::GetConstFromBuffer(const uint8_t* buf, uint32_t len) {
-    ALOGD("buf: %p, len: %d", buf, len);
+    // ALOGD("buf: %p, len: %d", buf, len);
     if (len != sizeof(T)) {
         ALOGE("fix me: typeid(T).name() should be %d bytes", sizeof(T));
         // fix me if buffer is of type float and if float and OperandLifeTime::CONSTANT_REFERENCE
@@ -111,15 +111,14 @@ const uint8_t* NnapiModelInfo::GetOperandMemory(int index, uint32_t& lenOut) {
     const auto op = mModel.operands[index];
     lenOut = op.location.length;
     if (op.lifetime == OperandLifeTime::CONSTANT_COPY) {
-        ALOGD("CONST_COPY");
+        // ALOGD("operand lifetime OperandLifeTime::CONSTANT_COPY");
         if (op.location.poolIndex != 0) {
-            ALOGE("CONSTANT_COPY expects poolIndex to be 0");
+            // ALOGE("CONSTANT_COPY expects poolIndex to be 0");
             nnAssert(false);
         }
-        ALOGD("operand lifetime OperandLifeTime::CONSTANT_COPY");
         return (const_cast<uint8_t*>(&mModel.operandValues[op.location.offset]));
     } else if (op.lifetime == OperandLifeTime::CONSTANT_REFERENCE) {
-        ALOGD("operand lifetime OperandLifeTime::CONSTANT_REFERENCE");
+        // ALOGD("operand lifetime OperandLifeTime::CONSTANT_REFERENCE");
         auto poolIndex = op.location.poolIndex;
         auto& r = mPoolInfos[poolIndex];
         return (const_cast<uint8_t*>(r.buffer + op.location.offset));
@@ -127,9 +126,9 @@ const uint8_t* NnapiModelInfo::GetOperandMemory(int index, uint32_t& lenOut) {
                op.lifetime == OperandLifeTime::MODEL_INPUT ||
                op.lifetime == OperandLifeTime::MODEL_OUTPUT ||
                op.lifetime == OperandLifeTime::NO_VALUE) {
-        ALOGD(
-            "operand lifetime "
-            "OperandLifeTime::MODEL_INPUT||MODEL_OUTPUT||NO_VALUE||TEMPORARY_VARIABLE");
+        // ALOGD(
+        //     "operand lifetime "
+        //     "OperandLifeTime::MODEL_INPUT||MODEL_OUTPUT||NO_VALUE||TEMPORARY_VARIABLE");
         lenOut = sizeOfData(op.type, op.dimensions);
         return nullptr;
     }
@@ -224,7 +223,7 @@ Blob::Ptr NnapiModelInfo::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const ui
             InferenceEngine::TensorDesc td(InferenceEngine::Precision::FP32, toDims(op.dimensions),
                                            layout);  // nhwc
             if (buf == nullptr) {
-                VLOG(L1, "MODEL_OUTPUT buf is NULL !!!!!!!!!!!!!!!");
+                ALOGD("MODEL_OUTPUT buf is NULL !!!!!!!!!!!!!!!");
                 InferenceEngine::TBlob<float>::Ptr blob =
                     std::make_shared<InferenceEngine::TBlob<float>>(td);
                 blob->allocate();
@@ -236,13 +235,13 @@ Blob::Ptr NnapiModelInfo::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const ui
             }
         }
     } else if (op.type == OperandType::TENSOR_INT32) {
-        VLOG(L1, "check if const tensors of type IN32 supported");
+        ALOGD("check if const tensors of type IN32 supported");
         // nnAssert(true);
         InferenceEngine::TensorDesc td(InferenceEngine::Precision::I32, toDims(op.dimensions),
                                        InferenceEngine::Layout::ANY);
         return std::make_shared<InferenceEngine::TBlob<int32_t>>(td, (int32_t*)buf, len);
     } else {
-        VLOG(L1, "not supporting const tensors of type ", op.type);
+        ALOGD("not supporting const tensors of type ", op.type);
         nnAssert(false);
     }
     return nullptr;
@@ -254,7 +253,7 @@ IRBlob::Ptr NnapiModelInfo::GetConstOperandAsTensor(int operand_idx, int operati
     uint32_t len;
 
     const uint8_t* buf = GetOperandMemory(operand_idx, len);
-    VLOG(L1, "NnapiModelInfo:: operand_index: %d, operation_index :%d,len: %d, buf: %p",
+    ALOGD("NnapiModelInfo:: operand_index: %d, operation_index :%d,len: %d, buf: %p",
          operand_idx, operation_idx, len, buf);
 
     if (op.type == OperandType::TENSOR_FLOAT32 || op.type == OperandType::FLOAT32) {
@@ -274,7 +273,7 @@ IRBlob::Ptr NnapiModelInfo::GetConstOperandAsTensor(int operand_idx, int operati
         InferenceEngine::TensorDesc td(InferenceEngine::Precision::FP32,
                                        permuteDims(inputDims, order), layout);
         if (buf == nullptr) {
-            VLOG(L1, "TENSOR_FLOAT32 buf is NULL !!!!!!!!!!!!!!!");
+            ALOGD("TENSOR_FLOAT32 buf is NULL !!!!!!!!!!!!!!!");
             InferenceEngine::TBlob<float>::Ptr blob =
                 std::make_shared<InferenceEngine::TBlob<float>>(td);
             blob->allocate();

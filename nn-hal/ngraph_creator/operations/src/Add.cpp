@@ -53,7 +53,7 @@ bool Add::createNode(const Operation& nnApiOp) {
         auto nnOperand = mModelInfo->getOperand(inputIndex);
 
         ALOGD("Input index: %d type: %d", inputIndex, nnOperand.type);
-        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT || nnOperand.lifetime == OperandLifeTime::TEMPORARY_VARIABLE) {
+        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT) {
             std::string name = "Add-" + std::to_string(mNwCreator->getNumber());
             ALOGD("Input is of type input %s  type=%d", name.c_str(), nnOperand.type);
             auto in = std::make_shared<ngraph::opset3::Parameter>(

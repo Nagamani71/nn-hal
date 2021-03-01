@@ -34,6 +34,7 @@ bool Reshape::validate(const Operation& op, NnapiModelInfo* modelInfo) {
 
 bool Reshape::createNode(const Operation& nnApiOp) {
     std::shared_ptr<ngraph::Node> inputNode = nullptr, shapeNode = nullptr;
+    ngraph::Output<ngraph::Node> inputTempNode, shapeTempNode;
     bool special_zero = true;
     auto createNode = [&](Operation op, uint32_t index) -> std::shared_ptr<ngraph::Node> {
         auto inputIndex = op.inputs[index];
@@ -41,7 +42,7 @@ bool Reshape::createNode(const Operation& nnApiOp) {
         auto nnOperand = mModelInfo->getOperand(inputIndex);
 
         ALOGD("Input index: %d type: %d", inputIndex, nnOperand.type);
-        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT || nnOperand.lifetime == OperandLifeTime::TEMPORARY_VARIABLE) {
+        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT) {
             std::string name = "Reshape-" + std::to_string(mNwCreator->getNumber());
             ALOGD("Input is of type model input %s  type=%d", name.c_str(), nnOperand.type);
             auto in = std::make_shared<ngraph::opset3::Parameter>(
@@ -59,10 +60,40 @@ bool Reshape::createNode(const Operation& nnApiOp) {
         } else if ((nnOperand.lifetime == OperandLifeTime::CONSTANT_COPY) ||
                    (nnOperand.lifetime == OperandLifeTime::CONSTANT_REFERENCE)) {
             ALOGD("Input is of type : const copy / reference %d", nnOperand.dimensions.size());
-            auto vals = mModelInfo->GetConstVecOperand<float>(inputIndex);
+            auto vals = mModelInfo->GetConstVecOperand<uint32_t>(inputIndex);
 
+            for(auto i = 0; i < vals.size(); i++){
+                ALOGD("vals[%d] is %d", i, vals[i]);
+            }
+
+            auto numInputElements = vals.size();  // getNumberOfElements
+
+    int strechDim = -1;
+    auto numOutputElements = 1;  // shape
+    // if (vals.size() == 3) vals.insert(vals.begin(), 1);
+    for(auto i = 0; i < vals.size(); i++){
+                ALOGD("vals[%d] is %d", i, vals[i]);
+            }
+    for (auto i = 0; i < vals.size(); i++) {
+        VLOG(L1, "operand1: shape of output tensor vals[%d] = %d ", i, vals[i]);
+        if ((int)vals[i] < 0) {
+            strechDim = i;  // strechdim
+            VLOG(L1, "strechDim = %d", i);
+            continue;
+        }
+        numOutputElements *= vals[i];  // shape
+    }
+
+    if (strechDim >= 0) {
+        auto strechValue = numInputElements / numOutputElements;
+        vals[strechDim] = (uint32_t)strechValue;
+        numOutputElements *= strechValue;
+
+        VLOG(L1, "numInputElements or size = %d, index = %d, vals[index] = %d", numInputElements,
+             strechDim, vals[strechDim]);
+    }
             auto in = std::make_shared<ngraph::opset3::Constant>(
-                ngraph::element::i32, ngraph::Shape(toNgraphShape(nnOperand.dimensions)), vals);
+                ngraph::element::i64, ngraph::Shape{vals.size()}, vals);
             return in;
         } else {
             ALOGD("Input is of type temporary variable or unsupported");
@@ -77,33 +108,42 @@ bool Reshape::createNode(const Operation& nnApiOp) {
     };
     ALOGD("========> Creating input node");
     inputNode = createNode(nnApiOp, 0);
-    inputNode = transpose(NHWC_NCHW, inputNode);
+    if(inputNode == nullptr){
+        inputTempNode = getNode(nnApiOp.inputs[0]);
+        // inputTempNode = transpose(NHWC_NCHW, inputTempNode);
+    } else{
+        // inputNode = transpose(NHWC_NCHW, inputNode);
+    }
     ALOGD("========> Creating shape node");
     shapeNode = createNode(nnApiOp, 1);
-    auto shapeIndex = nnApiOp.inputs[1];
-    auto shapeOperand = mModelInfo->getOperand(shapeIndex);
-    auto numInputElements = inputNode->get_shape().size();
-    ALOGD("numInputElements is %d", numInputElements);
-    int strechDim = -1;
-    auto numOutputElements = 1;  // shape
-    for (auto i = 0; i < shapeOperand.dimensions.size(); i++) {
-        ALOGD("operand1: shape of output tensor outDims[%d] = %d ", i, shapeOperand.dimensions[i]);
-        if ((int)shapeOperand.dimensions[i] < 0) {
-            strechDim = i;  // strechdim
-            ALOGD("strechDim = %d", i);
-            continue;
-        }
-        numOutputElements *= shapeOperand.dimensions[i];  // shape
-    }
+    // auto shapeIndex = nnApiOp.inputs[1];
+    // auto shapeOperand = mModelInfo->getOperand(shapeIndex);
+    // int numInputElements;
+    // if(inputNode == nullptr)
+    //      numInputElements = inputTempNode.get_shape().size();
+    // else
+    //     numInputElements = inputNode->get_shape().size();
+    // ALOGD("numInputElements is %d", numInputElements);
+    // int strechDim = -1;
+    // auto numOutputElements = 1;  // shape
+    // for (auto i = 0; i < shapeOperand.dimensions.size(); i++) {
+    //     ALOGD("operand1: shape of output tensor outDims[%d] = %d ", i, shapeOperand.dimensions[i]);
+    //     if ((int)shapeOperand.dimensions[i] < 0) {
+    //         strechDim = i;  // strechdim
+    //         ALOGD("strechDim = %d", i);
+    //         continue;
+    //     }
+    //     numOutputElements *= shapeOperand.dimensions[i];  // shape
+    // }
 
-    if (strechDim >= 0) {
-        auto strechValue = numInputElements / numOutputElements;
-        shapeOperand.dimensions[strechDim] = (uint32_t)strechValue;
-        numOutputElements *= strechValue;
+    // if (strechDim >= 0) {
+    //     auto strechValue = numInputElements / numOutputElements;
+    //     shapeOperand.dimensions[strechDim] = (uint32_t)strechValue;
+    //     numOutputElements *= strechValue;
 
-        ALOGD("numInputElements or size = %d, index = %d, shapeOperand.dimensions[index] = %d", numInputElements,
-             strechDim, shapeOperand.dimensions[strechDim]);
-    }
+    //     ALOGD("numInputElements or size = %d, index = %d, shapeOperand.dimensions[index] = %d", numInputElements,
+    //          strechDim, shapeOperand.dimensions[strechDim]);
+    // }
 
     // for (auto i = 0; i < shapeOperand.dimensions.size(); i++)
     //     ALOGD("operand1: shape of output tensor outDims[%d] = %d ", i, shapeOperand.dimensions[i]);
@@ -114,7 +154,7 @@ bool Reshape::createNode(const Operation& nnApiOp) {
     // }
     
     // auto vals = mModelInfo->GetConstVecOperand<float>(shapeIndex);
-    // auto shapeNode = std::make_shared<ngraph::opset3::Constant>(ngraph::element::i64, ngraph::Shape{shapeOperand.dimensions.size()}, vals.data());
+    // auto shapeNode1 = std::make_shared<ngraph::opset3::Constant>(ngraph::element::i64, ngraph::Shape{shapeOperand.dimensions.size()}, vals);
 
     // if ((int)shapeOperand.dimensions[0] == 0) {
     //     special_zero = true;
@@ -123,7 +163,8 @@ bool Reshape::createNode(const Operation& nnApiOp) {
     // }
     std::shared_ptr<ngraph::Node> reshapeNode;
     try{
-        reshapeNode = std::make_shared<ngraph::opset3::Reshape>(inputNode, shapeNode, special_zero);
+        reshapeNode = std::make_shared<ngraph::opset3::Reshape>(
+            (inputNode != nullptr) ? inputNode : inputTempNode, shapeNode, special_zero);
     } catch (const std::exception &ex) {
         ALOGE("%s Exception !!! %s", __func__, ex.what());
     }

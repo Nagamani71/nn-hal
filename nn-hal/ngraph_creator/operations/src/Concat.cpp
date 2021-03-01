@@ -43,6 +43,7 @@ bool Concat::createNode(const Operation& nnApiOp) {
 
     // std::vector<ngraph::Output<ngraph::Node>> inputs;
     std::vector<std::shared_ptr<ngraph::Node>> inputs;
+    std::vector<ngraph::Output<ngraph::Node>> inputTempNode;
     ALOGD("createNode n %d, axis %d", n, axis);
 
     auto createNode = [&](Operation op,
@@ -52,7 +53,7 @@ bool Concat::createNode(const Operation& nnApiOp) {
         auto nnOperand = mModelInfo->getOperand(inputIndex);
 
         ALOGD("Input index: %d type: %d", inputIndex, nnOperand.type);
-        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT || nnOperand.lifetime == OperandLifeTime::TEMPORARY_VARIABLE) {
+        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT) {
             std::string name = "Concat-" + std::to_string(mNwCreator->getNumber());
             ALOGD("Input is of type model input %s  type=%d", name.c_str(), nnOperand.type);
             auto in = std::make_shared<ngraph::opset3::Parameter>(
@@ -91,13 +92,20 @@ bool Concat::createNode(const Operation& nnApiOp) {
 
     for (int i = 0; i < n; i++) {
         std::shared_ptr<ngraph::Node> inputNode = nullptr;
-        inputNode = createNode(nnApiOp, i);
-        inputs.push_back(inputNode);
+        ngraph::Output<ngraph::Node> tempNode;
+        if(inputNode == nullptr){
+            tempNode = getNode(nnApiOp.inputs[i]);
+            inputTempNode.push_back(tempNode);
+        } else{
+            inputNode = createNode(nnApiOp, i);
+            inputs.push_back(inputNode);
+        }
     }
 
     std::shared_ptr<ngraph::Node> concatNode;
     try{
-    concatNode = std::make_shared<ngraph::opset3::Concat>(inputs, axis);
+    concatNode = std::make_shared<ngraph::opset3::Concat>(
+         inputTempNode, axis);
     } catch (const std::exception &ex) {
         ALOGE("%s Exception !!! %s", __func__, ex.what());
     }
@@ -114,6 +122,7 @@ bool Concat::createNode(const Operation& nnApiOp) {
             break;
         case OperandLifeTime::MODEL_OUTPUT:
             ALOGD("Output lifetime MODEL_OUTPUT");
+            // concatNode = transpose(CHW_HWC, concatNode);
             mNwCreator->addResultNode(nnApiOp.outputs[0], concatNode);
             mNwCreator->addLayerMetadata(nnApiOp.outputs[0], LayerInfo(outputName, false), false);
             break;

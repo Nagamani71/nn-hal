@@ -6,9 +6,8 @@ namespace neuralnetworks {
 namespace nnhal {
 
 // std::string OperationsBase::mPluginType;
-
-std::shared_ptr<ngraph::Node> OperationsBase::transpose(ConversionType type,
-                                                        std::shared_ptr<ngraph::Node> input) {
+template <typename T>
+T OperationsBase::transpose(ConversionType type, T input) {
     ngraph::AxisVector order;
     switch (type) {
         case NHWC_NCHW:
@@ -18,10 +17,13 @@ std::shared_ptr<ngraph::Node> OperationsBase::transpose(ConversionType type,
             order = {0, 2, 3, 1};
         case IHWO_OIHW:
             order = {3, 0, 1, 2};
+        case CHW_HWC:
+            order = {1, 2, 0};
     }
     const auto order_node =
         ngraph::opset3::Constant::create(ngraph::element::i64, ngraph::Shape{order.size()}, order);
-    return std::make_shared<ngraph::opset3::Transpose>(input, order_node);
+    auto node = std::make_shared<ngraph::opset3::Transpose>(input, order_node);
+    return node;
 }
 
 // override createNodeForPlugin in case sPluginType specific implementation is required
@@ -40,7 +42,8 @@ std::shared_ptr<ngraph::Node> OperationsBase::transpose(ConversionType type,
 // void OperationsBase::setNgraphNodes(std::shared_ptr<NgraphNodes> nodes) { mNgraphNodes = nodes; }
 
 // bool OperationsBase::validate(const Operation& op) { return true; }
-
+template std::shared_ptr<ngraph::Node> OperationsBase::transpose<std::shared_ptr<ngraph::Node>>(OperationsBase::ConversionType const, std::shared_ptr<ngraph::Node>);
+template ngraph::Output<ngraph::Node> OperationsBase::transpose<ngraph::Output<ngraph::Node>>(OperationsBase::ConversionType const, ngraph::Output<ngraph::Node>);
 }  // namespace nnhal
 }  // namespace neuralnetworks
 }  // namespace hardware

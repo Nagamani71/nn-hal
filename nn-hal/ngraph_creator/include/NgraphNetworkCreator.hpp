@@ -52,6 +52,7 @@ public:
 
     void mapIntermediateNodeOutput(uint32_t index, std::shared_ptr<ngraph::Node> node,
                                    uint32_t opIndex) {
+        ALOGD("mapIntermediateNodeOutput index %d, opIndex %d", index, opIndex);
         if (mIntermediates.find(index) != mIntermediates.end()) {
             ALOGE("Overwriting intermediate node index");
         }
@@ -61,6 +62,8 @@ public:
 
     std::tuple<std::shared_ptr<ngraph::Node>, uint32_t> getIntermediateNodeOutput(uint32_t index) {
         ALOGD("%s", __func__);
+        ALOGD("mIntermediates size %d", mIntermediates.size());
+        ALOGD("index is %d", index);
         return mIntermediates[index];
     }
 

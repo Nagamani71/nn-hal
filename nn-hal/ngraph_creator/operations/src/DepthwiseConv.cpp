@@ -116,14 +116,14 @@ bool DepthwiseConv::createNode(const Operation& nnApiOp) {
     int op_size = nnApiOp.inputs.size();
     std::shared_ptr<ngraph::Node> inputNode = nullptr, filterNode = nullptr, biasNode = nullptr,
                                   activation = nullptr;
-    ;
+    ngraph::Output<ngraph::Node> inputTempNode, filterTempNode;
     auto createNode = [&](Operation op, uint32_t index) -> std::shared_ptr<ngraph::Node> {
         auto inputIndex = op.inputs[index];
         ngraph::Shape inShape;
         auto nnOperand = mModelInfo->getOperand(inputIndex);
 
         ALOGD("Input index: %d type: %d", inputIndex, nnOperand.type);
-        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT || nnOperand.lifetime == OperandLifeTime::TEMPORARY_VARIABLE) {
+        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT) {
             std::string name = "DepthwiseConvolution-" + std::to_string(mNwCreator->getNumber());
             ALOGD("Input is of type model input %s  type=%d", name.c_str(), nnOperand.type);
             auto in = std::make_shared<ngraph::opset3::Parameter>(
@@ -147,7 +147,7 @@ bool DepthwiseConv::createNode(const Operation& nnApiOp) {
                 ngraph::element::f32, ngraph::Shape(toNgraphShape(nnOperand.dimensions)), vals);
             return in;
         } else {
-            ALOGD("Input is of type unsupported");
+            ALOGD("Input is of type temporary variable or unsupported");
             return nullptr;
         }
     };
@@ -300,8 +300,12 @@ bool DepthwiseConv::createNode(const Operation& nnApiOp) {
     try{
     ALOGD("========> Creating input node");
     inputNode = createNode(nnApiOp, 0);
+    if(inputNode == nullptr)
+        inputTempNode = getNode(nnApiOp.inputs[0]);
     ALOGD("========> Creating filter node");
     filterNode = createNode(nnApiOp, 1);
+    if(filterNode == nullptr)
+        filterTempNode = getNode(nnApiOp.inputs[1]);
     // ALOGD("========> Creating bias node");
     // biasNode = createNode(nnApiOp, 2);
 
@@ -311,13 +315,19 @@ bool DepthwiseConv::createNode(const Operation& nnApiOp) {
     dilations = {(size_t)dilation_width_factor, (size_t)dilation_height_factor};
 
     if (!useNchw) {
-        inputNode = transpose(NHWC_NCHW, inputNode);
-        filterNode = transpose(IHWO_OIHW, filterNode);
+        // if(inputNode == nullptr)
+        //     inputTempNode = transpose(NHWC_NCHW, inputTempNode);
+        // else
+        //     inputNode = transpose(NHWC_NCHW, inputNode);
+        if(filterNode == nullptr)
+            filterTempNode = transpose(NHWC_NCHW, filterTempNode);
+        else
+            filterNode = transpose(NHWC_NCHW, filterNode);
     }
-    for (auto i=0; i < filter.dimensions.size(); i++) {
-        ALOGD("filter[%d] is %d", i, filter.dimensions[i]);
-    }
-    std::vector<size_t> shape1(filterNode->get_shape().size(), 4);
+    // for (auto i=0; i < filter.dimensions.size(); i++) {
+    //     ALOGD("filter[%d] is %d", i, filter.dimensions[i]);
+    // }
+    // std::vector<size_t> shape1(filterNode->get_shape().size(), 4);
     if (input_channel != 1) {
         std::vector<size_t> shape(&filter.dimensions[0], &filter.dimensions[0] + 4);
         shape[0] /= input_channel;
@@ -331,16 +341,20 @@ bool DepthwiseConv::createNode(const Operation& nnApiOp) {
 
         auto shapeNode = std::make_shared<ngraph::op::Constant>(
             ngraph::element::i64, ngraph::Shape{shape.size()}, shape.data());
-        filterNode = std::make_shared<ngraph::op::v1::Reshape>(filterNode, shapeNode, true);
+        if(filterNode != nullptr)
+            filterNode = std::make_shared<ngraph::op::v1::Reshape>(filterNode, shapeNode, true);
+        else
+            filterTempNode = std::make_shared<ngraph::op::v1::Reshape>(filterTempNode, shapeNode, true);
     }
 
-    auto test = filterNode->get_shape();
-    for (auto i=0; i < test.size(); i++) {
-        ALOGD("fltrShape[%d] is %d", i, test[i]);
-    }
+    // auto test = filterNode->get_shape();
+    // for (auto i=0; i < test.size(); i++) {
+    //     ALOGD("fltrShape[%d] is %d", i, test[i]);
+    // }
     
     grpConvNode = std::make_shared<ngraph::opset3::GroupConvolution>(
-        inputNode, filterNode, ngraph::Strides(strides), ngraph::CoordinateDiff(pads_begin),
+        (inputNode != nullptr) ? inputNode : inputTempNode, 
+        (filterNode != nullptr) ? filterNode : filterTempNode, ngraph::Strides(strides), ngraph::CoordinateDiff(pads_begin),
         ngraph::CoordinateDiff(pads_end), ngraph::Strides(dilations), auto_pad);
     //  grpConvNode = std::make_shared<ngraph::opset3::Convolution>(
     //     inputNode, filterNode, ngraph::Strides(strides), ngraph::CoordinateDiff(pads_begin),
@@ -386,12 +400,12 @@ bool DepthwiseConv::createNode(const Operation& nnApiOp) {
         mNwCreator->appendNodeToMap(activation);
     }
 
-    if (!useNchw) {
-        if (activationFn)
-            activation = transpose(NCHW_NHWC, activation);
-        else
-            grpConvNode = transpose(NCHW_NHWC, grpConvNode);
-    }
+    // if (!useNchw) {
+    //     if (activationFn)
+    //         activation = transpose(NCHW_NHWC, activation);
+    //     else
+    //         grpConvNode = transpose(NCHW_NHWC, grpConvNode);
+    // }
 
     auto outputName = activationFn ? activation->outputs()[0].get_node()->get_friendly_name()
                                    : grpConvNode->outputs()[0].get_node()->get_friendly_name();

@@ -106,18 +106,19 @@ bool Convolution::createNode(const Operation& nnApiOp) {
     ALOGD("op_size is %d", op_size);
     std::shared_ptr<ngraph::Node> inputNode = nullptr, filterNode = nullptr, biasNode = nullptr,
                                   activation = nullptr;
-    ;
+    ngraph::Output<ngraph::Node> inputTempNode, filterTempNode;
     auto createNode = [&](Operation op, uint32_t index) -> std::shared_ptr<ngraph::Node> {
         auto inputIndex = op.inputs[index];
         ngraph::Shape inShape;
         auto nnOperand = mModelInfo->getOperand(inputIndex);
 
         ALOGD("Input index: %d type: %d", inputIndex, nnOperand.type);
-        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT || nnOperand.lifetime == OperandLifeTime::TEMPORARY_VARIABLE) {
+        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT) {
             std::string name = "Convolution-" + std::to_string(mNwCreator->getNumber());
             ALOGD("Input is of type model input %s  type=%d", name.c_str(), nnOperand.type);
             auto in = std::make_shared<ngraph::opset3::Parameter>(
                 ngraph::element::f32, toNgraphShape(nnOperand.dimensions));
+            // in = transpose(NHWC_NCHW, in);
             in->set_friendly_name(name);
 
             ALOGD("Setting input layer name: %s", name.c_str());
@@ -289,8 +290,12 @@ bool Convolution::createNode(const Operation& nnApiOp) {
     try{
     ALOGD("========> Creating input node");
     inputNode = createNode(nnApiOp, 0);
+    if(inputNode == nullptr)
+        inputTempNode = getNode(nnApiOp.inputs[0]);
     ALOGD("========> Creating filter node");
     filterNode = createNode(nnApiOp, 1);
+    if(filterNode == nullptr)
+        filterTempNode = getNode(nnApiOp.inputs[1]);
     
     // biasNode = createNode(nnApiOp, 2);
 
@@ -299,14 +304,25 @@ bool Convolution::createNode(const Operation& nnApiOp) {
     pads_end = {padding_right, padding_bottom};
     dilations = {(size_t)dilation_width_factor, (size_t)dilation_height_factor};
 
+
     if (!useNchw) {
-        inputNode = transpose(NHWC_NCHW, inputNode);
-        filterNode = transpose(NHWC_NCHW, filterNode);
+        if(input.lifetime == OperandLifeTime::MODEL_INPUT){
+            inputNode = transpose(NHWC_NCHW, inputNode);
+        }
+        // if(inputNode == nullptr)
+        //     inputTempNode = transpose(NHWC_NCHW, inputTempNode);
+        // else
+        //     inputNode = transpose(NHWC_NCHW, inputNode);
+        if(filterNode == nullptr)
+            filterTempNode = transpose(NHWC_NCHW, filterTempNode);
+        else
+            filterNode = transpose(NHWC_NCHW, filterNode);
     }
     ALOGD("========> Creating convolution node");
     
         convNode = std::make_shared<ngraph::opset3::Convolution>(
-        inputNode, filterNode, ngraph::Strides(strides), ngraph::CoordinateDiff(pads_begin),
+        (inputNode != nullptr) ? inputNode : inputTempNode, 
+        (filterNode != nullptr) ? filterNode : filterTempNode, ngraph::Strides(strides), ngraph::CoordinateDiff(pads_begin),
         ngraph::CoordinateDiff(pads_end), ngraph::Strides(dilations), auto_pad);
         ALOGD("========> Creating bias node");
         auto biasIndex =  nnApiOp.inputs[2];
@@ -352,16 +368,17 @@ bool Convolution::createNode(const Operation& nnApiOp) {
         mNwCreator->appendNodeToMap(activation);
     }
 
-    if (!useNchw) {
-        if (activationFn)
-            activation = transpose(NCHW_NHWC, activation);
-        else
-            convNode = transpose(NCHW_NHWC, convNode);
-    }
+    // if (!useNchw) {
+    //     if (activationFn)
+    //         activation = transpose(NCHW_NHWC, activation);
+    //     else
+    //         convNode = transpose(NCHW_NHWC, convNode);
+    // }
 
     auto outputName = activationFn ? activation->outputs()[0].get_node()->get_friendly_name()
                                    : convNode->outputs()[0].get_node()->get_friendly_name();
     ALOGD("Output name: %s", outputName.c_str());
+    ALOGD("output dims %d", nnApiOp.outputs[0]);
 
     // Check if the output is output node or intermediate node in the graph
     switch (mModelInfo->getOperandLifetime(nnApiOp.outputs[0])) {
