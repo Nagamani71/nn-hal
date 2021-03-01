@@ -103,6 +103,7 @@ bool Convolution::validate(const Operation& op, NnapiModelInfo* modelInfo) {
 }
 bool Convolution::createNode(const Operation& nnApiOp) {
     int op_size = nnApiOp.inputs.size();
+    ALOGD("op_size is %d", op_size);
     std::shared_ptr<ngraph::Node> inputNode = nullptr, filterNode = nullptr, biasNode = nullptr,
                                   activation = nullptr;
     ;
@@ -112,7 +113,7 @@ bool Convolution::createNode(const Operation& nnApiOp) {
         auto nnOperand = mModelInfo->getOperand(inputIndex);
 
         ALOGD("Input index: %d type: %d", inputIndex, nnOperand.type);
-        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT) {
+        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT || nnOperand.lifetime == OperandLifeTime::TEMPORARY_VARIABLE) {
             std::string name = "Convolution-" + std::to_string(mNwCreator->getNumber());
             ALOGD("Input is of type model input %s  type=%d", name.c_str(), nnOperand.type);
             auto in = std::make_shared<ngraph::opset3::Parameter>(
@@ -190,6 +191,8 @@ bool Convolution::createNode(const Operation& nnApiOp) {
 
         stride_width = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 7);
         stride_height = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 8);
+        // ALOGD("stride width %d", stride_width);     
+        // ALOGD("stride height %d", stride_height);   
 
         dilation_width_factor = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 11);
         dilation_height_factor = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 12);
@@ -207,6 +210,8 @@ bool Convolution::createNode(const Operation& nnApiOp) {
 
         stride_width = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 4);
         stride_height = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 5);
+        // ALOGD("stride width %d", stride_width);     
+        // ALOGD("stride height %d", stride_height);  
 
         dilation_width_factor = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 8);
         dilation_height_factor = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 9);
@@ -231,14 +236,63 @@ bool Convolution::createNode(const Operation& nnApiOp) {
         } else {
             auto_pad = ngraph::op::PadType::NOTSET;
         }
-    }
+    } else if (op_size == 10) {
+        //explicit padding, 1.0
+        padding_left = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 3);
+        padding_right = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 4);
+        padding_top = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 5);
+        padding_bottom = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 6);
 
+        stride_width = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 7);
+        stride_height = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 8);
+        // ALOGD("stride width %d", stride_width);     
+        // ALOGD("stride height %d", stride_height);   
+
+        dilation_width_factor = 1;
+        dilation_height_factor = 1;
+
+        activationFn = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 9);
+        auto_pad = ngraph::op::PadType::EXPLICIT;
+    } else if(op_size == 7) {
+        //implicit padding, 1.0
+        // Implicit padding
+        padding_scheme = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 3);
+
+        stride_width = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 4);
+        stride_height = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 5);
+        // ALOGD("stride width %d", stride_width);     
+        // ALOGD("stride height %d", stride_height);  
+
+        dilation_width_factor = 1;
+        dilation_height_factor = 1;
+
+        activationFn = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 6);
+
+        if (padding_scheme == 1) {
+            calculateExplicitPadding(input_width, stride_width, filter_width, 1, &padding_left,
+                                     &padding_right);
+            calculateExplicitPadding(input_height, stride_height, filter_height, 1, &padding_top,
+                                     &padding_bottom);
+            auto_pad = ngraph::op::PadType::SAME_UPPER;
+        } else if (padding_scheme == 2) {
+            auto_pad = ngraph::op::PadType::VALID;
+            padding_left = 0;
+            padding_right = 0;
+            padding_top = 0;
+            padding_bottom = 0;
+        } else {
+            auto_pad = ngraph::op::PadType::NOTSET;
+        }
+    }
+    std::string activationFnName;
+    std::shared_ptr<ngraph::Node> convNode;
+    try{
     ALOGD("========> Creating input node");
     inputNode = createNode(nnApiOp, 0);
     ALOGD("========> Creating filter node");
     filterNode = createNode(nnApiOp, 1);
-    ALOGD("========> Creating bias node");
-    biasNode = createNode(nnApiOp, 2);
+    
+    // biasNode = createNode(nnApiOp, 2);
 
     strides = {(size_t)stride_width, (size_t)stride_height};
     pads_begin = {padding_left, padding_top};
@@ -247,14 +301,30 @@ bool Convolution::createNode(const Operation& nnApiOp) {
 
     if (!useNchw) {
         inputNode = transpose(NHWC_NCHW, inputNode);
+        filterNode = transpose(NHWC_NCHW, filterNode);
     }
-
-    std::string activationFnName;
-    std::shared_ptr<ngraph::Node> convNode;
     ALOGD("========> Creating convolution node");
-    convNode = std::make_shared<ngraph::opset3::Convolution>(
+    
+        convNode = std::make_shared<ngraph::opset3::Convolution>(
         inputNode, filterNode, ngraph::Strides(strides), ngraph::CoordinateDiff(pads_begin),
         ngraph::CoordinateDiff(pads_end), ngraph::Strides(dilations), auto_pad);
+        ALOGD("========> Creating bias node");
+        auto biasIndex =  nnApiOp.inputs[2];
+        auto biasOperand = mModelInfo->getOperand(biasIndex);
+        std::vector<size_t> shape(convNode->get_shape().size(), 1);
+        shape[1] = biasOperand.dimensions[0];
+        ngraph::Shape constShape = ngraph::Shape(shape);
+        auto vals = mModelInfo->GetConstVecOperand<float>(biasIndex);
+        biasNode = std::make_shared<ngraph::opset3::Constant>(
+                ngraph::element::f32, constShape, vals);
+        convNode = std::make_shared<ngraph::opset3::Add>(
+                                  convNode, biasNode, ngraph::op::AutoBroadcastType::NUMPY);
+    } catch (const std::exception &ex) {
+        ALOGE("%s Exception !!! %s", __func__, ex.what());
+    }
+    // convNode = std::make_shared<ngraph::opset3::Convolution>(
+    //     inputNode, filterNode, ngraph::Strides(strides), ngraph::CoordinateDiff(pads_begin),
+    //     ngraph::CoordinateDiff(pads_end), ngraph::Strides(dilations), auto_pad);
     if (activationFn) {
         // Special case .. Need to add generic template to handle activation functions
         switch (activationFn) {
@@ -284,9 +354,9 @@ bool Convolution::createNode(const Operation& nnApiOp) {
 
     if (!useNchw) {
         if (activationFn)
-            activation = transpose(NHWC_NCHW, activation);
+            activation = transpose(NCHW_NHWC, activation);
         else
-            convNode = transpose(NHWC_NCHW, convNode);
+            convNode = transpose(NCHW_NHWC, convNode);
     }
 
     auto outputName = activationFn ? activation->outputs()[0].get_node()->get_friendly_name()

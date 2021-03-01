@@ -34,14 +34,14 @@ bool Reshape::validate(const Operation& op, NnapiModelInfo* modelInfo) {
 
 bool Reshape::createNode(const Operation& nnApiOp) {
     std::shared_ptr<ngraph::Node> inputNode = nullptr, shapeNode = nullptr;
-    bool special_zero;
+    bool special_zero = true;
     auto createNode = [&](Operation op, uint32_t index) -> std::shared_ptr<ngraph::Node> {
         auto inputIndex = op.inputs[index];
         ngraph::Shape inShape;
         auto nnOperand = mModelInfo->getOperand(inputIndex);
 
         ALOGD("Input index: %d type: %d", inputIndex, nnOperand.type);
-        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT) {
+        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT || nnOperand.lifetime == OperandLifeTime::TEMPORARY_VARIABLE) {
             std::string name = "Reshape-" + std::to_string(mNwCreator->getNumber());
             ALOGD("Input is of type model input %s  type=%d", name.c_str(), nnOperand.type);
             auto in = std::make_shared<ngraph::opset3::Parameter>(
@@ -62,7 +62,7 @@ bool Reshape::createNode(const Operation& nnApiOp) {
             auto vals = mModelInfo->GetConstVecOperand<float>(inputIndex);
 
             auto in = std::make_shared<ngraph::opset3::Constant>(
-                ngraph::element::f32, ngraph::Shape(toNgraphShape(nnOperand.dimensions)), vals);
+                ngraph::element::i32, ngraph::Shape(toNgraphShape(nnOperand.dimensions)), vals);
             return in;
         } else {
             ALOGD("Input is of type temporary variable or unsupported");
@@ -77,20 +77,56 @@ bool Reshape::createNode(const Operation& nnApiOp) {
     };
     ALOGD("========> Creating input node");
     inputNode = createNode(nnApiOp, 0);
+    inputNode = transpose(NHWC_NCHW, inputNode);
     ALOGD("========> Creating shape node");
     shapeNode = createNode(nnApiOp, 1);
-
     auto shapeIndex = nnApiOp.inputs[1];
     auto shapeOperand = mModelInfo->getOperand(shapeIndex);
-
-    if ((int)shapeOperand.dimensions[0] == 0) {
-        special_zero = true;
-    } else {
-        special_zero = false;
+    auto numInputElements = inputNode->get_shape().size();
+    ALOGD("numInputElements is %d", numInputElements);
+    int strechDim = -1;
+    auto numOutputElements = 1;  // shape
+    for (auto i = 0; i < shapeOperand.dimensions.size(); i++) {
+        ALOGD("operand1: shape of output tensor outDims[%d] = %d ", i, shapeOperand.dimensions[i]);
+        if ((int)shapeOperand.dimensions[i] < 0) {
+            strechDim = i;  // strechdim
+            ALOGD("strechDim = %d", i);
+            continue;
+        }
+        numOutputElements *= shapeOperand.dimensions[i];  // shape
     }
 
+    if (strechDim >= 0) {
+        auto strechValue = numInputElements / numOutputElements;
+        shapeOperand.dimensions[strechDim] = (uint32_t)strechValue;
+        numOutputElements *= strechValue;
+
+        ALOGD("numInputElements or size = %d, index = %d, shapeOperand.dimensions[index] = %d", numInputElements,
+             strechDim, shapeOperand.dimensions[strechDim]);
+    }
+
+    // for (auto i = 0; i < shapeOperand.dimensions.size(); i++)
+    //     ALOGD("operand1: shape of output tensor outDims[%d] = %d ", i, shapeOperand.dimensions[i]);
+    // if (numInputElements != numOutputElements) {
+    //     ALOGE("numInputElements is not equal to numOutputElements", numInputElements,
+    //          numOutputElements);
+    //     nnAssert(false);
+    // }
+    
+    // auto vals = mModelInfo->GetConstVecOperand<float>(shapeIndex);
+    // auto shapeNode = std::make_shared<ngraph::opset3::Constant>(ngraph::element::i64, ngraph::Shape{shapeOperand.dimensions.size()}, vals.data());
+
+    // if ((int)shapeOperand.dimensions[0] == 0) {
+    //     special_zero = true;
+    // } else {
+    //     special_zero = false;
+    // }
     std::shared_ptr<ngraph::Node> reshapeNode;
-    reshapeNode = std::make_shared<ngraph::opset3::Reshape>(inputNode, shapeNode, special_zero);
+    try{
+        reshapeNode = std::make_shared<ngraph::opset3::Reshape>(inputNode, shapeNode, special_zero);
+    } catch (const std::exception &ex) {
+        ALOGE("%s Exception !!! %s", __func__, ex.what());
+    }
 
     auto outputName = reshapeNode->outputs()[0].get_node()->get_friendly_name();
     ALOGD("Output name: %s", outputName.c_str());

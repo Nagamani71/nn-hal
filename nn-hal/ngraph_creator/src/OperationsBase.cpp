@@ -16,6 +16,8 @@ std::shared_ptr<ngraph::Node> OperationsBase::transpose(ConversionType type,
             break;
         case NCHW_NHWC:
             order = {0, 2, 3, 1};
+        case IHWO_OIHW:
+            order = {3, 0, 1, 2};
     }
     const auto order_node =
         ngraph::opset3::Constant::create(ngraph::element::i64, ngraph::Shape{order.size()}, order);

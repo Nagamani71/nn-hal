@@ -52,7 +52,7 @@ bool Concat::createNode(const Operation& nnApiOp) {
         auto nnOperand = mModelInfo->getOperand(inputIndex);
 
         ALOGD("Input index: %d type: %d", inputIndex, nnOperand.type);
-        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT) {
+        if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT || nnOperand.lifetime == OperandLifeTime::TEMPORARY_VARIABLE) {
             std::string name = "Concat-" + std::to_string(mNwCreator->getNumber());
             ALOGD("Input is of type model input %s  type=%d", name.c_str(), nnOperand.type);
             auto in = std::make_shared<ngraph::opset3::Parameter>(
@@ -96,7 +96,11 @@ bool Concat::createNode(const Operation& nnApiOp) {
     }
 
     std::shared_ptr<ngraph::Node> concatNode;
+    try{
     concatNode = std::make_shared<ngraph::opset3::Concat>(inputs, axis);
+    } catch (const std::exception &ex) {
+        ALOGE("%s Exception !!! %s", __func__, ex.what());
+    }
 
     auto outputName = concatNode->outputs()[0].get_node()->get_friendly_name();
     ALOGD("Output name: %s", outputName.c_str());
