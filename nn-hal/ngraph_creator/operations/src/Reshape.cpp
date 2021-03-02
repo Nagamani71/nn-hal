@@ -35,7 +35,7 @@ bool Reshape::validate(const Operation& op, NnapiModelInfo* modelInfo) {
 bool Reshape::createNode(const Operation& nnApiOp) {
     std::shared_ptr<ngraph::Node> inputNode = nullptr, shapeNode = nullptr;
     ngraph::Output<ngraph::Node> inputTempNode, shapeTempNode;
-    bool special_zero = true;
+    bool special_zero = false;
     auto createNode = [&](Operation op, uint32_t index) -> std::shared_ptr<ngraph::Node> {
         auto inputIndex = op.inputs[index];
         ngraph::Shape inShape;
@@ -171,7 +171,7 @@ bool Reshape::createNode(const Operation& nnApiOp) {
     try{
         reshapeNode = std::make_shared<ngraph::opset3::Reshape>(
             (inputNode != nullptr) ? inputNode : inputTempNode, shapeNode, special_zero);
-        reshapeNode = transpose(NHC_NCH, reshapeNode);
+        // reshapeNode = transpose(NHC_NCH, reshapeNode);
     } catch (const std::exception &ex) {
         ALOGE("%s Exception !!! %s", __func__, ex.what());
     }

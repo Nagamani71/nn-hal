@@ -38,8 +38,10 @@ bool Concat::createNode(const Operation& nnApiOp) {
     // //TODO:check with anoob
     // std::vector<uint32_t> axisMap = {2, 3, 1};  // NCHW = axisMap[NHWC]
     // auto axis = axisMap[mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, n)];
-    std::vector<uint32_t> axisMap = {0, 2, 3, 1};
-    auto axis = axisMap[mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, n)];
+    // std::vector<uint32_t> axisMap = {0, 2, 3, 1};
+    // auto axis = axisMap[mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, n)];
+
+    auto axis = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, n);
 
     // std::vector<ngraph::Output<ngraph::Node>> inputs;
     std::vector<std::shared_ptr<ngraph::Node>> inputs;
@@ -122,7 +124,7 @@ bool Concat::createNode(const Operation& nnApiOp) {
             break;
         case OperandLifeTime::MODEL_OUTPUT:
             ALOGD("Output lifetime MODEL_OUTPUT");
-            // concatNode = transpose(CHW_HWC, concatNode);
+            // concatNode = transpose(NCH_NHC, concatNode);
             mNwCreator->addResultNode(nnApiOp.outputs[0], concatNode);
             mNwCreator->addLayerMetadata(nnApiOp.outputs[0], LayerInfo(outputName, false), false);
             break;

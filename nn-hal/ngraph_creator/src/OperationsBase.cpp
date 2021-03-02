@@ -22,6 +22,9 @@ T OperationsBase::transpose(ConversionType type, T input) {
         case NHC_NCH:
             order = {0, 2, 1};
             break;
+        case NCH_NHC:
+            order = {0, 1, 2};
+            break;
     }
     const auto order_node =
         ngraph::opset3::Constant::create(ngraph::element::i64, ngraph::Shape{order.size()}, order);

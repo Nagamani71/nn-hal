@@ -116,6 +116,10 @@ bool Convolution::createNode(const Operation& nnApiOp) {
         if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT) {
             std::string name = "Convolution-" + std::to_string(mNwCreator->getNumber());
             ALOGD("Input is of type model input %s  type=%d", name.c_str(), nnOperand.type);
+            // auto tempDims = nnOperand.dimensions;
+            // nnOperand.dimensions[1] = nnOperand.dimensions[3];
+            // nnOperand.dimensions[2] = nnOperand.dimensions[1];
+            // nnOperand.dimensions[3] = nnOperand.dimensions[2];
             auto in = std::make_shared<ngraph::opset3::Parameter>(
                 ngraph::element::f32, toNgraphShape(nnOperand.dimensions));
             // in = transpose(NHWC_NCHW, in);
