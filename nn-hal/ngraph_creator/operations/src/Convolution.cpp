@@ -324,7 +324,7 @@ bool Convolution::createNode(const Operation& nnApiOp) {
         (inputNode != nullptr) ? inputNode : inputTempNode, 
         (filterNode != nullptr) ? filterNode : filterTempNode, ngraph::Strides(strides), ngraph::CoordinateDiff(pads_begin),
         ngraph::CoordinateDiff(pads_end), ngraph::Strides(dilations), auto_pad);
-        ALOGD("========> Creating bias node");
+        ALOGD("========> Creating bias node %d", convNode->get_shape().size());
         auto biasIndex =  nnApiOp.inputs[2];
         auto biasOperand = mModelInfo->getOperand(biasIndex);
         std::vector<size_t> shape(convNode->get_shape().size(), 1);
@@ -374,6 +374,12 @@ bool Convolution::createNode(const Operation& nnApiOp) {
     //     else
     //         convNode = transpose(NCHW_NHWC, convNode);
     // }
+
+    if (!activationFn){
+        // std::shared_ptr<ngraph::Node> constantOp =
+        // std::make_shared<ngraph::opset3::Constant>(ngraph::element::f32, convNode->get_shape());
+        convNode = transpose(NCHW_NHWC, convNode);
+    }
 
     auto outputName = activationFn ? activation->outputs()[0].get_node()->get_friendly_name()
                                    : convNode->outputs()[0].get_node()->get_friendly_name();

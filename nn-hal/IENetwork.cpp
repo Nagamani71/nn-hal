@@ -13,7 +13,7 @@ namespace neuralnetworks {
 namespace nnhal {
 
 bool IENetwork::loadNetwork() {
-    ALOGE("%s", __func__);
+    ALOGD("%s", __func__);
 
     InferenceEngine::Core ie;
     std::map<std::string, std::string> config;

@@ -109,8 +109,14 @@ bool Reshape::createNode(const Operation& nnApiOp) {
     ALOGD("========> Creating input node");
     inputNode = createNode(nnApiOp, 0);
     if(inputNode == nullptr){
-        inputTempNode = getNode(nnApiOp.inputs[0]);
-        // inputTempNode = transpose(NHWC_NCHW, inputTempNode);
+        try{
+            inputTempNode = getNode(nnApiOp.inputs[0]);
+    //         std::shared_ptr<ngraph::Node> constantOp =
+    //     std::make_shared<ngraph::opset3::Constant>(ngraph::element::f32, inputTempNode.get_shape());
+    // inputTempNode = transpose(NHWC_NCHW, constantOp);;
+        } catch (const std::exception &ex) {
+        ALOGE("%s Exception !!! %s", __func__, ex.what());
+    }
     } else{
         // inputNode = transpose(NHWC_NCHW, inputNode);
     }
