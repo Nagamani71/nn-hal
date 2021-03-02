@@ -374,11 +374,14 @@ bool Convolution::createNode(const Operation& nnApiOp) {
     //     else
     //         convNode = transpose(NCHW_NHWC, convNode);
     // }
-
+    try{
     if (!activationFn){
         // std::shared_ptr<ngraph::Node> constantOp =
         // std::make_shared<ngraph::opset3::Constant>(ngraph::element::f32, convNode->get_shape());
         convNode = transpose(NCHW_NHWC, convNode);
+    }
+    }catch (const std::exception &ex) {
+        ALOGE("%s Exception !!! %s", __func__, ex.what());
     }
 
     auto outputName = activationFn ? activation->outputs()[0].get_node()->get_friendly_name()

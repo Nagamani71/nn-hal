@@ -32,7 +32,7 @@ protected:
     // virtual std::shared_ptr<ngraph::Node> createNodeForPlugin(const Operation& op);
     NnapiModelInfo* mModelInfo;
     NgraphNetworkCreator* mNwCreator;
-    enum ConversionType { NHWC_NCHW, NCHW_NHWC, IHWO_OIHW, CHW_HWC };
+    enum ConversionType { NHWC_NCHW, NCHW_NHWC, IHWO_OIHW, NHC_NCH };
     template <typename T>
     T transpose(ConversionType type, T input);
 

@@ -38,13 +38,13 @@ bool Concat::createNode(const Operation& nnApiOp) {
     // //TODO:check with anoob
     // std::vector<uint32_t> axisMap = {2, 3, 1};  // NCHW = axisMap[NHWC]
     // auto axis = axisMap[mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, n)];
-
-    auto axis = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, n);
+    std::vector<uint32_t> axisMap = {0, 2, 3, 1};
+    auto axis = axisMap[mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, n)];
 
     // std::vector<ngraph::Output<ngraph::Node>> inputs;
     std::vector<std::shared_ptr<ngraph::Node>> inputs;
     std::vector<ngraph::Output<ngraph::Node>> inputTempNode;
-    ALOGD("createNode n %d, axis %d", n, axis);
+    ALOGD("createNode n %d, axis %d %d", n, axis, mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, n));
 
     auto createNode = [&](Operation op,
                           uint32_t index) -> std::shared_ptr<ngraph::Node> {

@@ -15,10 +15,13 @@ T OperationsBase::transpose(ConversionType type, T input) {
             break;
         case NCHW_NHWC:
             order = {0, 2, 3, 1};
+            break;
         case IHWO_OIHW:
             order = {3, 0, 1, 2};
-        case CHW_HWC:
-            order = {1, 2, 0};
+            break;
+        case NHC_NCH:
+            order = {0, 2, 1};
+            break;
     }
     const auto order_node =
         ngraph::opset3::Constant::create(ngraph::element::i64, ngraph::Shape{order.size()}, order);

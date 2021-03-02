@@ -171,10 +171,10 @@ bool Reshape::createNode(const Operation& nnApiOp) {
     try{
         reshapeNode = std::make_shared<ngraph::opset3::Reshape>(
             (inputNode != nullptr) ? inputNode : inputTempNode, shapeNode, special_zero);
+        reshapeNode = transpose(NHC_NCH, reshapeNode);
     } catch (const std::exception &ex) {
         ALOGE("%s Exception !!! %s", __func__, ex.what());
     }
-
     auto outputName = reshapeNode->outputs()[0].get_node()->get_friendly_name();
     ALOGD("Output name: %s", outputName.c_str());
 
