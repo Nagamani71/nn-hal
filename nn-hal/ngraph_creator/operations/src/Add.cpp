@@ -114,12 +114,12 @@ bool Add::createNode(const Operation& nnApiOp) {
                 break;
             case (int32_t)FusedActivationFunc::RELU6:
                 ALOGD("Adding relu6");
-                activation = std::make_shared<ngraph::opset3::Clamp>(addOp, -1, 1);
+                activation = std::make_shared<ngraph::opset3::Clamp>(addOp, 0, 6);
                 activationFnName = "relu6";
                 break;
             case (int32_t)FusedActivationFunc::RELU1:
                 ALOGD("Adding relu1");
-                activation = std::make_shared<ngraph::opset3::Clamp>(addOp, 0, 6);
+                activation = std::make_shared<ngraph::opset3::Clamp>(addOp, -1, 1);
                 activationFnName = "relu1";
                 break;
             default:

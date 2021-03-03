@@ -35,6 +35,13 @@ bool IENetwork::loadNetwork() {
             }
             ALOGI("Name: %s ", input.first.c_str());
         }
+        for (auto output : mOutputInfo) {
+            auto dims = output.second->getTensorDesc().getDims();
+            for (auto i : dims) {
+                ALOGI(" Dimes : %d", i);
+            }
+            ALOGI("Name: %s ", output.first.c_str());
+        }
         //#endif
     } else {
         ALOGE("Invalid Network pointer");

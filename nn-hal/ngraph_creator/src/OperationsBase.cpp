@@ -16,8 +16,11 @@ T OperationsBase::transpose(ConversionType type, T input) {
         case NCHW_NHWC:
             order = {0, 2, 3, 1};
             break;
-        case IHWO_OIHW:
+        case OHWI_IOHW:
             order = {3, 0, 1, 2};
+            break;
+        case OHWI_OIHW:
+            order = {0, 3, 1, 2};
             break;
         case NHC_NCH:
             order = {0, 2, 1};
