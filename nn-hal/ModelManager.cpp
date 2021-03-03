@@ -166,40 +166,9 @@ Blob::Ptr NnapiModelInfo::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const ui
                 blob->allocate();
                 return blob;
             } else {
-                if (inputDims.size() != 4) {
                     InferenceEngine::TBlob<float>::Ptr blob =
-                        std::make_shared<InferenceEngine::TBlob<float>>(td, (float*)buf);
+                    std::make_shared<InferenceEngine::TBlob<float>>(td, (float*)buf, len);
                     return blob;
-                } else {
-                    InferenceEngine::TBlob<float>::Ptr blob =
-                        std::make_shared<InferenceEngine::TBlob<float>>(td);
-                    blob->allocate();
-
-                    auto dims_nhwc = inputDims;  // toDims(op.dimensions);
-                    size_t batch = dims_nhwc[0];
-                    size_t in_depth = dims_nhwc[3];  // channels
-                    size_t height = dims_nhwc[1];
-                    size_t width = dims_nhwc[2];
-                    size_t offset = 0;  // blob->size() == o*i*h*w and simlar to nchw memory layout
-                    const float* input = reinterpret_cast<const float*>(buf);  // OHWI memory layout
-
-                    // convert NHWC -> NCHW
-
-                    for (size_t b = 0; b < batch; b++) {
-                        for (size_t i = 0; i < in_depth; i++) {
-                            for (size_t h = 0; h < height; h++) {
-                                for (size_t w = 0; w < width; w++) {
-                                    size_t offset_nhwc = b * height * width * in_depth +
-                                                         h * width * in_depth + w * in_depth +
-                                                         i;  // similar to NHWC memory layout
-                                    blob->buffer().as<float*>()[offset++] = input[offset_nhwc];
-                                }
-                            }
-                        }
-                    }
-
-                    return blob;
-                }
             }
         } else if (op.lifetime == OperandLifeTime::MODEL_OUTPUT) {
             ALOGD("Create output blob !!!!");
@@ -279,39 +248,9 @@ IRBlob::Ptr NnapiModelInfo::GetConstOperandAsTensor(int operand_idx, int operati
             blob->allocate();
             return blob;
         } else {
-            if (inputDims.size() != 4) {
-                InferenceEngine::TBlob<float>::Ptr blob =
-                    std::make_shared<InferenceEngine::TBlob<float>>(td, (float*)buf, len);
-                return blob;
-            } else {
-                InferenceEngine::TBlob<float>::Ptr blob =
-                    std::make_shared<InferenceEngine::TBlob<float>>(td);
-                blob->allocate();
-
-                auto dims_ohwi = inputDims;  // toDims(op.dimensions);
-                size_t out_depth = dims_ohwi[0];
-                size_t in_depth = dims_ohwi[3];
-                size_t height = dims_ohwi[1];
-                size_t width = dims_ohwi[2];
-                size_t offset = 0;  // blob->size() == o*i*h*w and simlar to nchw memory layout
-                const float* inputFilter =
-                    reinterpret_cast<const float*>(buf);  // OHWI memory layout
-
-                for (size_t o = 0; o < out_depth; o++) {
-                    for (size_t i = 0; i < in_depth; i++) {
-                        for (size_t h = 0; h < height; h++) {
-                            for (size_t w = 0; w < width; w++) {
-                                size_t offset_ohwi = o * height * width * in_depth +
-                                                     h * width * in_depth + w * in_depth +
-                                                     i;  // similar to NHWC memory layout
-                                blob->buffer().as<float*>()[offset++] = inputFilter[offset_ohwi];
-                            }
-                        }
-                    }
-                }
-
-                return blob;
-            }
+            InferenceEngine::TBlob<float>::Ptr blob =
+                std::make_shared<InferenceEngine::TBlob<float>>(td, (float*)buf, len);
+            return blob;
         }
     } else if (op.type == OperandType::TENSOR_INT32) {
         VLOG(L1, "check if const tensors of type IN32 supported");
@@ -372,36 +311,8 @@ IRBlob::Ptr NnapiModelInfo::GetConstWeightsOperandAsTensor(uint32_t index) {
                 return blob;
             } else {
                 InferenceEngine::TBlob<float>::Ptr blob =
-                    std::make_shared<InferenceEngine::TBlob<float>>(td);
-                blob->allocate();
-
-                auto dims_ohwi = inputDims;  // toDims(op.dimensions);
-                size_t out_depth = dims_ohwi[0];
-                size_t in_depth = dims_ohwi[3];
-                size_t height = dims_ohwi[1];
-                size_t width = dims_ohwi[2];
-                size_t offset = 0;  // blob->size() == o*i*h*w and simlar to nchw memory layout
-                const float* inputFilter =
-                    reinterpret_cast<const float*>(buf);  // OHWI memory layout
-
-                // convert OHWI -> OIHW
-
-                // for depth conv need reorder as IOHW since for tflite O is always 1 and IE expects
-                // reorder to [in_channels, depth_multiplier, filter_height, filter_width]
-                for (size_t i = 0; i < in_depth; i++) {
-                    for (size_t o = 0; o < out_depth; o++) {
-                        for (size_t h = 0; h < height; h++) {
-                            for (size_t w = 0; w < width; w++) {
-                                size_t offset_ohwi = o * height * width * in_depth +
-                                                     h * width * in_depth + w * in_depth +
-                                                     i;  // similar to NHWC memory layout
-                                blob->buffer().as<float*>()[offset++] = inputFilter[offset_ohwi];
-                            }
-                        }
-                    }
-                }
-
-                return blob;
+                std::make_shared<InferenceEngine::TBlob<float>>(td, (float*)buf, len);
+            return blob;
             }
         }
     } else if (op.type == OperandType::TENSOR_INT32) {

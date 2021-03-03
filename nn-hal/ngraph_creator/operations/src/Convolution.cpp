@@ -116,10 +116,10 @@ bool Convolution::createNode(const Operation& nnApiOp) {
         if (nnOperand.lifetime == OperandLifeTime::MODEL_INPUT) {
             std::string name = "Convolution-" + std::to_string(mNwCreator->getNumber());
             ALOGD("Input is of type model input %s  type=%d", name.c_str(), nnOperand.type);
-            auto test = nnOperand.dimensions;
-            nnOperand.dimensions[1] = test[3];
-            nnOperand.dimensions[2] = test[1];
-            nnOperand.dimensions[3] = test[2];
+            // auto test = nnOperand.dimensions;
+            // nnOperand.dimensions[1] = test[3];
+            // nnOperand.dimensions[2] = test[1];
+            // nnOperand.dimensions[3] = test[2];
             auto in = std::make_shared<ngraph::opset3::Parameter>(
                 ngraph::element::f32, toNgraphShape(nnOperand.dimensions));
             in->set_friendly_name(name);
@@ -284,6 +284,8 @@ bool Convolution::createNode(const Operation& nnApiOp) {
         ALOGD("========> Creating filter node");
         filterNode = createNode(nnApiOp, 1);
         if (filterNode == nullptr) filterTempNode = getNode(nnApiOp.inputs[1]);
+        if(input.lifetime == OperandLifeTime::MODEL_INPUT)
+            inputNode = transpose(NHWC_NCHW, inputNode);
         strides = {(size_t)stride_width, (size_t)stride_height};
         pads_begin = {padding_left, padding_top};
         pads_end = {padding_right, padding_bottom};
