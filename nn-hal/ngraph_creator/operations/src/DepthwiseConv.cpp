@@ -244,7 +244,8 @@ bool DepthwiseConv::createNode(const Operation& nnApiOp) {
         } else {
             auto_pad = ngraph::op::PadType::NOTSET;
         }
-    } if (op_size == 11) {
+    }
+    if (op_size == 11) {
         // Explicit padding, 1.0
 
         padding_left = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 3);
@@ -297,67 +298,67 @@ bool DepthwiseConv::createNode(const Operation& nnApiOp) {
     }
     std::string activationFnName;
     std::shared_ptr<ngraph::Node> grpConvNode;
-    try{
-    ALOGD("========> Creating input node");
-    inputNode = createNode(nnApiOp, 0);
-    if(inputNode == nullptr)
-        inputTempNode = getNode(nnApiOp.inputs[0]);
-    ALOGD("========> Creating filter node");
-    filterNode = createNode(nnApiOp, 1);
-    if(filterNode == nullptr)
-        filterTempNode = getNode(nnApiOp.inputs[1]);
-    strides = {(size_t)stride_width, (size_t)stride_height};
-    pads_begin = {padding_left, padding_top};
-    pads_end = {padding_right, padding_bottom};
-    dilations = {(size_t)dilation_width_factor, (size_t)dilation_height_factor};
+    try {
+        ALOGD("========> Creating input node");
+        inputNode = createNode(nnApiOp, 0);
+        if (inputNode == nullptr) inputTempNode = getNode(nnApiOp.inputs[0]);
+        ALOGD("========> Creating filter node");
+        filterNode = createNode(nnApiOp, 1);
+        if (filterNode == nullptr) filterTempNode = getNode(nnApiOp.inputs[1]);
+        strides = {(size_t)stride_width, (size_t)stride_height};
+        pads_begin = {padding_left, padding_top};
+        pads_end = {padding_right, padding_bottom};
+        dilations = {(size_t)dilation_width_factor, (size_t)dilation_height_factor};
 
-        if(filterNode == nullptr)
+        if (filterNode == nullptr)
             filterTempNode = transpose(OHWI_IOHW, filterTempNode);
         else
             filterNode = transpose(OHWI_IOHW, filterNode);
 
+        if (input_channel != 1) {
+            if (filterNode != nullptr) {
+                std::vector<size_t> shape(&filterNode->get_shape()[0],
+                                          &filterNode->get_shape()[0] + 4);
+                shape[0] /= input_channel;
+                shape.insert(shape.begin(), input_channel);
+                ALOGD("final filternode shape %d", shape.size());
 
-    if (input_channel != 1) {
-        if(filterNode != nullptr){
-            std::vector<size_t> shape(&filterNode->get_shape()[0], &filterNode->get_shape()[0]+4);
-            shape[0] /= input_channel;
-            shape.insert(shape.begin(), input_channel);
-            ALOGD("final filternode shape %d", shape.size());
+                auto shapeNode = std::make_shared<ngraph::op::Constant>(
+                    ngraph::element::i64, ngraph::Shape{shape.size()}, shape.data());
+                filterNode = std::make_shared<ngraph::op::v1::Reshape>(filterNode, shapeNode, true);
+            } else {
+                std::vector<size_t> shape(&filterTempNode.get_shape()[0],
+                                          &filterTempNode.get_shape()[0] + 4);
+                shape[0] /= input_channel;
+                shape.insert(shape.begin(), input_channel);
+                ALOGD("final filterTempNode shape %d", shape.size());
 
-            auto shapeNode = std::make_shared<ngraph::op::Constant>(
-                ngraph::element::i64, ngraph::Shape{shape.size()}, shape.data());
-            filterNode = std::make_shared<ngraph::op::v1::Reshape>(filterNode, shapeNode, true);
+                auto shapeNode = std::make_shared<ngraph::op::Constant>(
+                    ngraph::element::i64, ngraph::Shape{shape.size()}, shape.data());
+                filterTempNode =
+                    std::make_shared<ngraph::op::v1::Reshape>(filterTempNode, shapeNode, true);
+            }
         }
-        else{
-            std::vector<size_t> shape(&filterTempNode.get_shape()[0], &filterTempNode.get_shape()[0]+4);
-            shape[0] /= input_channel;
-            shape.insert(shape.begin(), input_channel);
-            ALOGD("final filterTempNode shape %d", shape.size());
 
-            auto shapeNode = std::make_shared<ngraph::op::Constant>(
-                ngraph::element::i64, ngraph::Shape{shape.size()}, shape.data());
-            filterTempNode = std::make_shared<ngraph::op::v1::Reshape>(filterTempNode, shapeNode, true);
-        }
-    }
-    
-    grpConvNode = std::make_shared<ngraph::opset3::GroupConvolution>(
-        (inputNode != nullptr) ? inputNode : inputTempNode, 
-        (filterNode != nullptr) ? filterNode : filterTempNode, ngraph::Strides(strides), ngraph::CoordinateDiff(pads_begin),
-        ngraph::CoordinateDiff(pads_end), ngraph::Strides(dilations), auto_pad);
+        grpConvNode = std::make_shared<ngraph::opset3::GroupConvolution>(
+            (inputNode != nullptr) ? inputNode : inputTempNode,
+            (filterNode != nullptr) ? filterNode : filterTempNode, ngraph::Strides(strides),
+            ngraph::CoordinateDiff(pads_begin), ngraph::CoordinateDiff(pads_end),
+            ngraph::Strides(dilations), auto_pad);
 
-    ALOGD("========> Creating bias node");
+        ALOGD("========> Creating bias node");
 
-    auto biasIndex =  nnApiOp.inputs[2];
-    auto biasOperand = mModelInfo->getOperand(biasIndex);
-    std::vector<size_t> shape(grpConvNode->get_shape().size(), 1);
-    shape[1] = biasOperand.dimensions[0];
-    ngraph::Shape constShape = ngraph::Shape(shape);
-    auto vals = mModelInfo->GetConstVecOperand<float>(biasIndex);
-    biasNode = std::make_shared<ngraph::opset3::Constant>(
-            ngraph::element::f32, constShape, vals);
-    grpConvNode = std::make_shared<ngraph::opset3::Add>(
-                                  grpConvNode, biasNode, ngraph::op::AutoBroadcastType::NUMPY);
-    }catch (const std::exception &ex) {
+        auto biasIndex = nnApiOp.inputs[2];
+        auto biasOperand = mModelInfo->getOperand(biasIndex);
+        std::vector<size_t> shape(grpConvNode->get_shape().size(), 1);
+        shape[1] = biasOperand.dimensions[0];
+        ngraph::Shape constShape = ngraph::Shape(shape);
+        auto vals = mModelInfo->GetConstVecOperand<float>(biasIndex);
+        biasNode =
+            std::make_shared<ngraph::opset3::Constant>(ngraph::element::f32, constShape, vals);
+        grpConvNode = std::make_shared<ngraph::opset3::Add>(grpConvNode, biasNode,
+                                                            ngraph::op::AutoBroadcastType::NUMPY);
+    } catch (const std::exception& ex) {
         ALOGE("%s Exception !!! %s", __func__, ex.what());
     }
     if (activationFn) {

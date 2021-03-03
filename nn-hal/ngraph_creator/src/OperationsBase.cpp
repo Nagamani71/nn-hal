@@ -51,8 +51,10 @@ T OperationsBase::transpose(ConversionType type, T input) {
 // void OperationsBase::setNgraphNodes(std::shared_ptr<NgraphNodes> nodes) { mNgraphNodes = nodes; }
 
 // bool OperationsBase::validate(const Operation& op) { return true; }
-template std::shared_ptr<ngraph::Node> OperationsBase::transpose<std::shared_ptr<ngraph::Node>>(OperationsBase::ConversionType const, std::shared_ptr<ngraph::Node>);
-template ngraph::Output<ngraph::Node> OperationsBase::transpose<ngraph::Output<ngraph::Node>>(OperationsBase::ConversionType const, ngraph::Output<ngraph::Node>);
+template std::shared_ptr<ngraph::Node> OperationsBase::transpose<std::shared_ptr<ngraph::Node>>(
+    OperationsBase::ConversionType const, std::shared_ptr<ngraph::Node>);
+template ngraph::Output<ngraph::Node> OperationsBase::transpose<ngraph::Output<ngraph::Node>>(
+    OperationsBase::ConversionType const, ngraph::Output<ngraph::Node>);
 }  // namespace nnhal
 }  // namespace neuralnetworks
 }  // namespace hardware

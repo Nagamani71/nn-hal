@@ -253,8 +253,8 @@ IRBlob::Ptr NnapiModelInfo::GetConstOperandAsTensor(int operand_idx, int operati
     uint32_t len;
 
     const uint8_t* buf = GetOperandMemory(operand_idx, len);
-    ALOGD("NnapiModelInfo:: operand_index: %d, operation_index :%d,len: %d, buf: %p",
-         operand_idx, operation_idx, len, buf);
+    ALOGD("NnapiModelInfo:: operand_index: %d, operation_index :%d,len: %d, buf: %p", operand_idx,
+          operation_idx, len, buf);
 
     if (op.type == OperandType::TENSOR_FLOAT32 || op.type == OperandType::FLOAT32) {
         vec<unsigned int> order;

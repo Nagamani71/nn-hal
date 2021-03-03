@@ -31,15 +31,15 @@ struct LayerInfo {
 
 static ngraph::Shape toNgraphShape(const std::vector<uint32_t>& dimensions) {
     ngraph::Shape shapeVec;
-    for (auto i=0; i < dimensions.size(); i++) {
+    for (auto i = 0; i < dimensions.size(); i++) {
         shapeVec.push_back(static_cast<size_t>(dimensions[i]));
     }
     return shapeVec;
 }
 
 static void calculateExplicitPadding(int32_t in_size, int32_t stride, int32_t filter_size,
-                              int32_t padding_implicit, int32_t* padding_head,
-                              int32_t* padding_tail) {
+                                     int32_t padding_implicit, int32_t* padding_head,
+                                     int32_t* padding_tail) {
     *padding_head = 0;
     *padding_tail = 0;
 

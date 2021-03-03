@@ -43,14 +43,14 @@ bool CpuPreparedModel::initialize(const Model& model) {
             return false;
         }
     }
-    
+
     ALOGI("Generating IR Graph");
     mNet = mNgc->generateIRGraph();
     mNet->serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
-                         "/data/vendor/neuralnetworks/ngraph_ir.bin");
+                    "/data/vendor/neuralnetworks/ngraph_ir.bin");
     mPlugin = new IENetwork(mNet);
     mPlugin->loadNetwork();
-    
+
     // ALOGI("initialize ExecuteNetwork for device %s", mTargetDevice.c_str());
     // mEnginePtr = new ExecuteNetwork(mNet, mTargetDevice);
     // mEnginePtr->prepareInput();

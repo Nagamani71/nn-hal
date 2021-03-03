@@ -37,10 +37,10 @@ bool Concat::createNode(const Operation& nnApiOp) {
     auto axis = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, n);
     std::vector<std::shared_ptr<ngraph::Node>> inputs;
     std::vector<ngraph::Output<ngraph::Node>> inputTempNode;
-    ALOGD("createNode n %d, axis %d %d", n, axis, mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, n));
+    ALOGD("createNode n %d, axis %d %d", n, axis,
+          mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, n));
 
-    auto createNode = [&](Operation op,
-                          uint32_t index) -> std::shared_ptr<ngraph::Node> {
+    auto createNode = [&](Operation op, uint32_t index) -> std::shared_ptr<ngraph::Node> {
         auto inputIndex = op.inputs[index];
         ngraph::Shape inShape;
         auto nnOperand = mModelInfo->getOperand(inputIndex);
@@ -78,28 +78,26 @@ bool Concat::createNode(const Operation& nnApiOp) {
     auto getNode = [&](uint32_t index) {
         std::shared_ptr<ngraph::Node> node;
         uint32_t outIndex;
-        std::tie(node, outIndex) =
-            mNwCreator->getIntermediateNodeOutput(index);
+        std::tie(node, outIndex) = mNwCreator->getIntermediateNodeOutput(index);
         return node->outputs()[outIndex];
     };
 
     for (int i = 0; i < n; i++) {
         std::shared_ptr<ngraph::Node> inputNode = nullptr;
         ngraph::Output<ngraph::Node> tempNode;
-        if(inputNode == nullptr){
+        if (inputNode == nullptr) {
             tempNode = getNode(nnApiOp.inputs[i]);
             inputTempNode.push_back(tempNode);
-        } else{
+        } else {
             inputNode = createNode(nnApiOp, i);
             inputs.push_back(inputNode);
         }
     }
 
     std::shared_ptr<ngraph::Node> concatNode;
-    try{
-    concatNode = std::make_shared<ngraph::opset3::Concat>(
-         inputTempNode, axis);
-    } catch (const std::exception &ex) {
+    try {
+        concatNode = std::make_shared<ngraph::opset3::Concat>(inputTempNode, axis);
+    } catch (const std::exception& ex) {
         ALOGE("%s Exception !!! %s", __func__, ex.what());
     }
 
