@@ -94,6 +94,16 @@ bool NnapiModelInfo::initializeRunTimeOperandInfo() {
     return true;
 }
 
+bool NnapiModelInfo::isOperandDataNull(int index) {
+    const auto op = mModel.operands[index];
+    if (op.lifetime == OperandLifeTime::NO_VALUE) {
+        ALOGD("index %d has life time NO_VALUE", index);
+        return true;
+    }
+
+    return false;
+}
+
 // TODO: Move it to Utils class
 template <typename T>
 T NnapiModelInfo::GetConstFromBuffer(const uint8_t* buf, uint32_t len) {

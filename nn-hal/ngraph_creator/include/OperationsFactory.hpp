@@ -6,6 +6,7 @@
 #include <Convolution.hpp>
 #include <DepthwiseConv.hpp>
 #include <FullyConnected.hpp>
+#include <LSTM.hpp>
 #include <Relu.hpp>
 #include <Reshape.hpp>
 
@@ -47,6 +48,9 @@ public:
             case OperationType::FULLY_CONNECTED:
                 nodePtr = std::make_unique<FullyConnected>(modelInfo, nwCreator);
                 break;
+            case OperationType::LSTM:
+                nodePtr = std::make_unique<LSTM>(modelInfo, nwCreator);
+                break;
             case OperationType::RELU:
                 nodePtr = std::make_unique<Relu>(modelInfo, nwCreator);
                 break;
@@ -78,6 +82,9 @@ public:
                     break;
                 case OperationType::FULLY_CONNECTED:
                     if (!FullyConnected::validate(op, modelInfo)) return false;
+                    break;
+                case OperationType::LSTM:
+                    if (!LSTM::validate(op, modelInfo)) return false;
                     break;
                 case OperationType::RELU:
                     if (!Relu::validate(op, modelInfo)) return false;

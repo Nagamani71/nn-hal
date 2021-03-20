@@ -10,6 +10,7 @@
 #include <ngraph/node.hpp>
 #include <ngraph/opsets/opset3.hpp>
 #include <ngraph/shape.hpp>
+#include <ngraph/src/ngraph/op/fused/lstm_cell.hpp>
 
 #include "ModelManager.h"
 

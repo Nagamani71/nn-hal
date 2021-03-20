@@ -15,6 +15,7 @@ cc_library_static {
         "operations/src/Convolution.cpp",
         "operations/src/DepthwiseConv.cpp",
         "operations/src/FullyConnected.cpp",
+        "operations/src/LSTM.cpp",
         "operations/src/Relu.cpp",
         "operations/src/Reshape.cpp"
     ],
@@ -29,6 +30,7 @@ cc_library_static {
     ],
     include_dirs: [
         "vendor/intel/external/project-celadon/nn-hal/nn-hal",
+        "vendor/intel/external/project-celadon/dldt"
     ],
     local_include_dirs: [
         "include/",

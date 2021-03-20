@@ -67,6 +67,8 @@ public:
     }
 
     const Operand getOperand(int index) { return mModel.operands[index]; }
+    
+    bool isOperandDataNull(int index);
 
     RunTimeOperandInfo& getRuntimeOperand(uint32_t index) {
         return mOperands[mModel.inputIndexes[index]];
