@@ -409,6 +409,26 @@ bool LSTM::createNode(const Operation& nnApiOp) {
             weights_format, activations, activations_alpha, activations_beta, clip, input_forget);
     }
 
+    auto outputName = lstmNode->outputs()[0].get_node()->get_friendly_name();
+    ALOGD("Output name: %s", outputName.c_str());
+
+    switch (mModelInfo->getOperandLifetime(nnApiOp.outputs[0])) {
+        case OperandLifeTime::TEMPORARY_VARIABLE:
+            ALOGD("Output lifetime TEMPORARY_VARIABLE");
+            mNwCreator->addIntermediateNode(nnApiOp.outputs[0], lstmNode->outputs()[0]);
+            mNwCreator->mapIntermediateNodeOutput(nnApiOp.outputs[0], lstmNode, 0);
+            break;
+        case OperandLifeTime::MODEL_OUTPUT:
+            ALOGD("Output lifetime MODEL_OUTPUT");
+            mNwCreator->addResultNode(nnApiOp.outputs[0], lstmNode);
+            mNwCreator->addLayerMetadata(nnApiOp.outputs[0], LayerInfo(outputName, false), false);
+            break;
+        default:
+            ALOGE("Unsupported lifetime for output node: %d",
+                  mModelInfo->getOperandLifetime(nnApiOp.outputs[0]));
+            break;
+    }
+
     ALOGV("Exiting %s", __func__);
     return true;
 }
