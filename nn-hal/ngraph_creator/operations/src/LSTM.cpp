@@ -141,13 +141,15 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     ALOGV("Entering %s", __func__);
     // inputs
     const auto& input = mModelInfo->getOperand(nnApiOp.inputs[0]);
-
-    const auto& input2input_weights = mModelInfo->getOperand(nnApiOp.inputs[1]); //optional, for CIFG
+    //incase of non CIFG, how input is handled? do we need to initialize weight matix to 0?
+    //input2input is not required in case of no CIFG
+    //could be viceversa (do check)
+    const auto& input2input_weights = mModelInfo->getOperand(nnApiOp.inputs[1]); //optional, for CIFG no value
     const auto& input2forget_weights = mModelInfo->getOperand(nnApiOp.inputs[2]);
     const auto& input2cell_weights = mModelInfo->getOperand(nnApiOp.inputs[3]);
     const auto& input2output_weights = mModelInfo->getOperand(nnApiOp.inputs[4]);
 
-    const auto& recurrent2input_weights = mModelInfo->getOperand(nnApiOp.inputs[5]); //optional, for CIFG
+    const auto& recurrent2input_weights = mModelInfo->getOperand(nnApiOp.inputs[5]); //optional, for CIFG no value
     const auto& recurrent2forget_weights = mModelInfo->getOperand(nnApiOp.inputs[6]);
     const auto& recurrent2cell_weights = mModelInfo->getOperand(nnApiOp.inputs[7]);
     const auto& recurrent2output_weights = mModelInfo->getOperand(nnApiOp.inputs[8]);
@@ -156,34 +158,40 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     const auto& cell2forget_weights = mModelInfo->getOperand(nnApiOp.inputs[10]); //optional, for peephole
     const auto& cell2output_weights = mModelInfo->getOperand(nnApiOp.inputs[11]); //optional, for peephole
 
-    const auto& input_gate_bias = mModelInfo->getOperand(nnApiOp.inputs[12]); //optional, for CIFG
+    const auto& input_gate_bias = mModelInfo->getOperand(nnApiOp.inputs[12]); //optional, for CIFG no value
     const auto& forget_gate_bias = mModelInfo->getOperand(nnApiOp.inputs[13]);
     const auto& cell_bias = mModelInfo->getOperand(nnApiOp.inputs[14]);
     const auto& output_gate_bias = mModelInfo->getOperand(nnApiOp.inputs[15]);
 
+    // openvino support not there
     const auto& projection_weights = mModelInfo->getOperand(nnApiOp.inputs[16]); //optional, for recurrent projection
     const auto& projection_bias = mModelInfo->getOperand(nnApiOp.inputs[17]); //optional, for recurrent projection
 
     const auto& output_state = mModelInfo->getOperand(nnApiOp.inputs[18]);
     const auto& cell_state = mModelInfo->getOperand(nnApiOp.inputs[19]);
 
+     // activation_param
+        // .channelQuant = {},
+        // .data = TestBuffer::createFromVector<int32_t>({4}),
+        // .dimensions = {},
+        // .isIgnored = false,
+        // .lifetime = TestOperandLifeTime::CONSTANT_COPY,
+        // .numberOfConsumers = 1,
+        // .scale = 0.0f,
+        // .type = TestOperandType::INT32,
+        // .zeroPoint = 0
     // activation function: value indicating the activation function:
     // 0: None; 1: Relu; 3: Relu6; 4: Tanh; 6: Sigmoid.
     const auto& activationFn = mModelInfo->getOperand(nnApiOp.inputs[20]);
 
     const auto& cell_state_clipping = mModelInfo->getOperand(nnApiOp.inputs[21]);
-    const auto& output_clipping_frmProjection = mModelInfo->getOperand(nnApiOp.inputs[22]);
+    const auto& output_clipping_frmProjection = mModelInfo->getOperand(nnApiOp.inputs[22]); // for projection
 
+    // openvino support not there
     const auto& input_layer_normalization_weights = mModelInfo->getOperand(nnApiOp.inputs[22]);
     const auto& forget_layer_normalization_weights = mModelInfo->getOperand(nnApiOp.inputs[23]);
     const auto& cell_layer_normalization_weights = mModelInfo->getOperand(nnApiOp.inputs[24]);
     const auto& output_layer_normalization_weights = mModelInfo->getOperand(nnApiOp.inputs[25]);
-
-    // outputs
-    // const auto& scratch_buffer = mModelInfo->getOperand(nnApiOp.inputs[0]);
-    // const auto& output_state = mModelInfo->getOperand(nnApiOp.inputs[1]);
-    // const auto& cell_state = mModelInfo->getOperand(nnApiOp.inputs[2]);
-    // const auto& output = mModelInfo->getOperand(nnApiOp.inputs[3]);  
 
     bool isCIFGEnabled = false; //input[1], input[5], input[12] must have values (W_{xi}, W_{hi}, b_i)
     bool isPeepholeOptimizationEnabled = false; //input[9], input[10], input[11] must have values W_{ci}, W_{cf}, W_{co}
@@ -286,19 +294,39 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     ngraph::op::LSTMWeightsFormat weights_format = ngraph::op::LSTMWeightsFormat::IFCO;
 
     //TODO: calculate properly
-    const std::vector<std::string>& activations =
-                             std::vector<std::string>{"sigmoid", "tanh", "tanh"};
+    // const std::vector<std::string>& activations =
+    //                          std::vector<std::string>{"sigmoid", "tanh", "tanh"};
+    std::vector<std::string> activations;
     const std::vector<float>& activations_alpha = {};
     const std::vector<float>& activations_beta = {};
     float clip = 0.f;
     bool input_forget = false;
     std::shared_ptr<ngraph::Node> lstmNode;
 
-    // TODO: calculate properly
-    // hidden_size = &initial_hidden_state->get_shape()[0];
+    auto activationVals = mModelInfo->GetConstVecOperand<float>(20);;
+
+    for (auto val : activationVals) {
+        if(val == 0){
+            activations.push_back(""); //TODO: how to handle none
+        } else if(val == 1){
+            activations.push_back("relu");
+        } else if(val == 3){
+            activations.push_back("relu"); //relu6 not there in openvino, how to handle?
+        } else if(val == 4){
+            activations.push_back("tanh");
+        } else if(val == 6){
+            activations.push_back("sigmoid");
+        }
+    }
+
+    // TODO: calculate properly, changed compile now, but check at runtime
+    hidden_size = (std::size_t)&initial_hidden_state->get_shape()[1];
+    ALOGD("size of initial_hidden_state is %d", &initial_hidden_state->get_shape()[1]);
 
     clip = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 21);
 
+    ALOGD("========> Creating CIFG inputWeight node");
+    inputWeight = createNode(nnApiOp, 1);
     ALOGD("========> Creating forgetWeight node");
     forgetWeight = createNode(nnApiOp, 2);    
     ALOGD("========> Creating forgetWeight node");
@@ -306,7 +334,8 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     ALOGD("========> Creating forgetWeight node");
     outputWeight = createNode(nnApiOp, 4);
 
-
+    ALOGD("========> Creating CIFG recurrentInputWeight node");
+    recurrentInputWeight = createNode(nnApiOp, 5);
     ALOGD("========> Creating recurrentForgetWeight node");
     recurrentForgetWeight = createNode(nnApiOp, 6);    
     ALOGD("========> Creating recurrentCellWeight node");
@@ -314,6 +343,8 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     ALOGD("========> Creating recurrentOutputWeight node");
     recurrentOutputWeight = createNode(nnApiOp, 8);
 
+    ALOGD("========> Creating CIFG inputBias node");
+    inputBias = createNode(nnApiOp, 12);
     ALOGD("========> Creating forgetBias node");
     forgetBias = createNode(nnApiOp, 13);    
     ALOGD("========> Creating cellBias node");
@@ -321,60 +352,36 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     ALOGD("========> Creating outputBias node");
     outputBias = createNode(nnApiOp, 15);
 
+    weightsVector.push_back(inputWeight);
     weightsVector.push_back(forgetWeight);
     weightsVector.push_back(cellWeight);
     weightsVector.push_back(outputWeight);
 
+    reccurentVector.push_back(recurrentInputWeight);
     reccurentVector.push_back(recurrentForgetWeight);
     reccurentVector.push_back(recurrentCellWeight);
     reccurentVector.push_back(recurrentOutputWeight);
 
+    biasVector.push_back(inputBias);
     biasVector.push_back(forgetBias);
     biasVector.push_back(cellBias);
     biasVector.push_back(outputBias);
 
-    // TODO: how to extract weights and bias from input parameter
+    // TODO: how to hanlde input, reccurent and baise nodes with null/0 values, check values at runtime
     if(isCIFGEnabled){
-        ALOGD("========> Creating CIFG inputWeight node");
-        inputWeight = createNode(nnApiOp, 1);
-        ALOGD("========> Creating CIFG recurrentInputWeight node");
-        recurrentInputWeight = createNode(nnApiOp, 5);
-        ALOGD("========> Creating CIFG inputBias node");
-        inputBias = createNode(nnApiOp, 12);
-
-        weightsVector.insert(weightsVector.begin(), inputWeight);
-        reccurentVector.insert(reccurentVector.begin(), recurrentInputWeight);
-        biasVector.insert(biasVector.begin(), inputBias);
-        // weightsVector.push_back(inputWeight);
-        // reccurentVector.push_back(recurrentInputWeight);
-        // biasVector.push_back(inputBias);
         input_forget = true;
     }
 
     weightsNode = std::make_shared<ngraph::opset3::Concat>(weightsVector, concat_axis);
+    ALOGD("size of concatinated weights is %d", &weightsNode->get_shape()[0]);
     recurrenceWeightNode = std::make_shared<ngraph::opset3::Concat>(reccurentVector, concat_axis);
     biasNode = std::make_shared<ngraph::opset3::Concat>(biasVector, concat_axis);
 
-    std::vector<size_t> weightsShape(&weightsNode->get_shape()[0],
-                                          &weightsNode->get_shape()[0] * 4);
-    std::vector<size_t> recurrenceWeightShape(&recurrenceWeightNode->get_shape()[0],
-                                          &recurrenceWeightNode->get_shape()[0] * 4);
-    std::vector<size_t> biasShape(&biasNode->get_shape()[0],
-                                          &biasNode->get_shape()[0] * 4);
-
-    auto weightsShapeNode = std::make_shared<ngraph::op::Constant>(
-                    ngraph::element::i64, ngraph::Shape{weightsShape.size()}, weightsShape.data());
-    W = std::make_shared<ngraph::op::v1::Reshape>(weightsNode, weightsShapeNode, true);
-
-    auto recurrenceWeightShapeNode = std::make_shared<ngraph::op::Constant>(
-                    ngraph::element::i64, ngraph::Shape{recurrenceWeightShape.size()}, recurrenceWeightShape.data());
-    R = std::make_shared<ngraph::op::v1::Reshape>(recurrenceWeightNode, recurrenceWeightShapeNode, true);
-
-    auto biasShapeNode = std::make_shared<ngraph::op::Constant>(
-                    ngraph::element::i64, ngraph::Shape{biasShape.size()}, biasShape.data());
-    B = std::make_shared<ngraph::op::v1::Reshape>(biasNode, biasShapeNode, true);
-
     // TODO: how to implement projection and normalization and handle output
+
+    W = weightsNode;
+    R = recurrenceWeightNode;
+    B = biasNode;
 
     if(isPeepholeOptimizationEnabled){
         ALOGD("========> Creating Peephole pInputWeight node");
@@ -389,11 +396,7 @@ bool LSTM::createNode(const Operation& nnApiOp) {
         peepholeVector.push_back(pOutputWeight);
 
         peepholeNode = std::make_shared<ngraph::opset3::Concat>(weightsVector, concat_axis);
-        std::vector<size_t> peepholeShape(&peepholeNode->get_shape()[0],
-                                          &peepholeNode->get_shape()[0] * 3);
-        auto peepholeShapeNode = std::make_shared<ngraph::op::Constant>(
-                    ngraph::element::i64, ngraph::Shape{peepholeShape.size()}, peepholeShape.data());
-        P = std::make_shared<ngraph::op::v1::Reshape>(peepholeNode, peepholeShapeNode, true);
+        P = peepholeNode;
 
         lstmNode = std::make_shared<ngraph::opset3::LSTMCell>(
             (inputNode != nullptr) ? inputNode : inputTempNode,
@@ -404,22 +407,6 @@ bool LSTM::createNode(const Operation& nnApiOp) {
             (inputNode != nullptr) ? inputNode : inputTempNode,
             initial_hidden_state, initial_cell_state, W, R, B, hidden_size,
             weights_format, activations, activations_alpha, activations_beta, clip, input_forget);
-    }
-
-    if(!isCIFGEnabled && !isPeepholeOptimizationEnabled && !isRecurrentProjectionLayer) {
-
-    }
-
-    if(isCIFGEnabled && isPeepholeOptimizationEnabled) {
-
-    }
-
-    if(isCIFGEnabled && !isPeepholeOptimizationEnabled){
-
-    }
-
-    if(!isCIFGEnabled && isPeepholeOptimizationEnabled){
-
     }
 
     ALOGV("Exiting %s", __func__);
