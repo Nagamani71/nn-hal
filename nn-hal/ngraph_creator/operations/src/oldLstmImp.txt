@@ -141,7 +141,9 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     ALOGV("Entering %s", __func__);
     // inputs
     const auto& input = mModelInfo->getOperand(nnApiOp.inputs[0]);
+    //incase of non CIFG, how input is handled? do we need to initialize weight matix to 0?
     //input2input is not required in case of no CIFG
+    //could be viceversa (do check)
     const auto& input2input_weights = mModelInfo->getOperand(nnApiOp.inputs[1]); //optional, for CIFG no value
     const auto& input2forget_weights = mModelInfo->getOperand(nnApiOp.inputs[2]);
     const auto& input2cell_weights = mModelInfo->getOperand(nnApiOp.inputs[3]);
@@ -297,37 +299,31 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     std::vector<std::string> activations;
     const std::vector<float>& activations_alpha = {};
     const std::vector<float>& activations_beta = {};
-    float m_clip = 0.f;
+    float clip = 0.f;
     bool input_forget = false;
     std::shared_ptr<ngraph::Node> lstmNode;
-    std::string activationName;
 
-    auto activationVals = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 20);
+    auto activationVals = mModelInfo->GetConstVecOperand<float>(20);;
 
-    // for (auto val : activationVals) {
-        if(activationVals == 0){
-            // activations.push_back(""); //TODO: how to handle none
-            activationName = ""; //TODO: how to handle none
-        } else if(activationVals == 1){
-            // activations.push_back("relu");
-            activationName = "relu";
-        } else if(activationVals == 3){
-            // activations.push_back("relu6"); //relu6 not there in openvino, how to handle?
-            activationName = "relu6";
-        } else if(activationVals == 4){
-            // activations.push_back("tanh");
-            activationName = "tanh";
-        } else if(activationVals == 6){
-            // activations.push_back("sigmoid");
-            activationName = "sigmoid";
+    for (auto val : activationVals) {
+        if(val == 0){
+            activations.push_back(""); //TODO: how to handle none
+        } else if(val == 1){
+            activations.push_back("relu");
+        } else if(val == 3){
+            activations.push_back("relu"); //relu6 not there in openvino, how to handle?
+        } else if(val == 4){
+            activations.push_back("tanh");
+        } else if(val == 6){
+            activations.push_back("sigmoid");
         }
-    // }
+    }
 
     // TODO: calculate properly, changed compile now, but check at runtime
     hidden_size = (std::size_t)&initial_hidden_state->get_shape()[1];
     ALOGD("size of initial_hidden_state is %d", &initial_hidden_state->get_shape()[1]);
 
-    m_clip = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 21);
+    clip = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 21);
 
     ALOGD("========> Creating CIFG inputWeight node");
     inputWeight = createNode(nnApiOp, 1);
@@ -370,6 +366,8 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     biasVector.push_back(forgetBias);
     biasVector.push_back(cellBias);
     biasVector.push_back(outputBias);
+
+    // TODO: how to hanlde input, reccurent and baise nodes with null/0 values, check values at runtime
     if(isCIFGEnabled){
         input_forget = true;
     }
@@ -384,7 +382,7 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     W = weightsNode;
     R = recurrenceWeightNode;
     B = biasNode;
-    
+
     if(isPeepholeOptimizationEnabled){
         ALOGD("========> Creating Peephole pInputWeight node");
         pInputWeight = createNode(nnApiOp, 9);
@@ -399,60 +397,17 @@ bool LSTM::createNode(const Operation& nnApiOp) {
 
         peepholeNode = std::make_shared<ngraph::opset3::Concat>(weightsVector, concat_axis);
         P = peepholeNode;
+
+        lstmNode = std::make_shared<ngraph::opset3::LSTMCell>(
+            (inputNode != nullptr) ? inputNode : inputTempNode,
+            initial_hidden_state, initial_cell_state, W, R, B, P, hidden_size,
+            weights_format, activations, activations_alpha, activations_beta, clip, input_forget);
     } else {
-        ngraph::Shape peepholeshape = ngraph::Shape(3*hidden_size);
-        auto defaultPeepholeop = std::make_shared<ngraph::opset3::Constant>((inputNode != nullptr) ? inputNode->get_element_type() : inputTempNode.get_element_type(), peepholeshape, std::vector<float>{0.f});
-        P = defaultPeepholeop;
+        lstmNode = std::make_shared<ngraph::opset3::LSTMCell>(
+            (inputNode != nullptr) ? inputNode : inputTempNode,
+            initial_hidden_state, initial_cell_state, W, R, B, hidden_size,
+            weights_format, activations, activations_alpha, activations_beta, clip, input_forget);
     }
-
-    ngraph::NodeVector p_iof = ngraph::builder::split(P, 3);
-    const auto& p_i = p_iof.at(0);
-    const auto& p_o = p_iof.at(1);
-    const auto& p_f = p_iof.at(2);
-
-    // Xt*(W^T) -- for [iofc] gates.
-    auto Xt_W = make_shared<ngraph::op::Dot>((inputNode != nullptr) ? inputNode : inputTempNode, ngraph::builder::transpose(W));
-    // Ht-1*(R^T)  -- for [iofc] gates.
-    auto Ht_R = make_shared<ngraph::op::Dot>(initial_hidden_state, ngraph::builder::transpose(R));
-    // Xt*(W^T) + Ht-1*(R^T) + Wb + Rb  -- for [iofc] gates.
-    auto gates = add(Xt_W, add(Ht_R, B));
-
-    ngraph::NodeVector split_gates = ngraph::builder::split(gates, 4, -1);
-    auto i_t = split_gates.at(0);
-    auto f_t = split_gates.at(1);
-    auto c_t = split_gates.at(2);
-    auto o_t = split_gates.at(3);
-
-    // f(Xt*(Wi^T) + Ht-1*(Ri^T) + Pi (.) Ct-1 + Wbi + Rbi)
-    i_t = handleFusion(clip(add(i_t, mul(p_i, initial_cell_state)), m_clip), activationVals); // guessing as scratch buffer
-
-    if (isCIFGEnabled) {
-        // Couple input with forget gate: 1 - i_t
-        f_t = sub(ngraph::op::Constant::create(i_t->get_element_type(),
-                                       i_t->get_shape(),
-                                       std::vector<float>(shape_size(i_t->get_shape()), 1.f)),
-                  i_t);
-    } else {
-        // f(Xt*(Wf^T) + Ht-1*(Rf^T) + Pf (.) Ct-1 + Wbf + Rbf)
-        f_t = handleFusion(clip(add(f_t, mul(p_f, initial_cell_state)), m_clip), activationVals);
-    }
-
-     // ft (.) Ct-1 + it (.) ct
-    auto C = add(mul(f_t, initial_cell_state), mul(i_t, handleFusion(clip(c_t, m_clip), activationVals))); // C_t
-    // f(Xt*(Wo^T) + Ht-1*(Ro^T) + Po (.) Ct + Wbo + Rbo)
-    o_t = handleFusion(clip(add(o_t, mul(p_o, C)), m_clip), activationVals); // o_t
-
-    // ot (.) h(Ct)
-    auto H = mul(o_t, handleFusion(clip(C, m_clip), activationVals)); // h_t 
-
-    // concat to create nnapi output node
-    std::vector<std::shared_ptr<ngraph::Node>> lstmOpVector;
-    lstmOpVector.push_back(i_t);
-    lstmOpVector.push_back(H);
-    lstmOpVector.push_back(C);
-    lstmOpVector.push_back(o_t);
-
-    lstmNode = std::make_shared<ngraph::opset3::Concat>(lstmOpVector, concat_axis);
 
     auto outputName = lstmNode->outputs()[0].get_node()->get_friendly_name();
     ALOGD("Output name: %s", outputName.c_str());
@@ -476,42 +431,6 @@ bool LSTM::createNode(const Operation& nnApiOp) {
 
     ALOGV("Exiting %s", __func__);
     return true;
-}
-
-std::shared_ptr<ngraph::Node> LSTM::add(const ngraph::Output<ngraph::Node>& lhs, const ngraph::Output<ngraph::Node>& rhs) {
-    return {make_shared<ngraph::op::Add>(lhs, rhs, ngraph::op::AutoBroadcastSpec(ngraph::op::AutoBroadcastType::NUMPY))};
-}
-
-std::shared_ptr<ngraph::Node> LSTM::sub(const ngraph::Output<ngraph::Node>& lhs, const ngraph::Output<ngraph::Node>& rhs) {
-    return {
-        make_shared<ngraph::op::Subtract>(lhs, rhs, ngraph::op::AutoBroadcastSpec(ngraph::op::AutoBroadcastType::NUMPY))};
-}
-
-std::shared_ptr<ngraph::Node> LSTM::mul(const ngraph::Output<ngraph::Node>& lhs, const ngraph::Output<ngraph::Node>& rhs) {
-    return {
-        make_shared<ngraph::op::Multiply>(lhs, rhs, ngraph::op::AutoBroadcastSpec(ngraph::op::AutoBroadcastType::NUMPY))};
-}
-
-std::shared_ptr<ngraph::Node> LSTM::clip(const ngraph::Output<ngraph::Node>& data, float m_clip) const {
-    return make_shared<ngraph::op::Clamp>(data, -m_clip, m_clip);
-}
-std::shared_ptr<ngraph::Node> LSTM::handleFusion(const std::shared_ptr<ngraph::Node>& arg, int activationVals) const {
-    switch(activationVals){
-        case 1:
-            return std::make_shared<ngraph::opset3::Relu>(arg);
-            break;
-        case 3:
-            return std::make_shared<ngraph::opset3::Clamp>(arg, 0, 6);
-            break;
-        case 4:
-            return std::make_shared<ngraph::opset3::Tanh>(arg);
-            break;
-        case 6:
-            return std::make_shared<ngraph::opset3::Sigmoid>(arg);
-            break;
-        default:
-            return std::make_shared<ngraph::opset3::Sigmoid>(arg); // handle properly
-    }
 }
 
 }  // namespace nnhal
