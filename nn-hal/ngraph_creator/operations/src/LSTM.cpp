@@ -424,7 +424,7 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     auto o_t = split_gates.at(3);
 
     // f(Xt*(Wi^T) + Ht-1*(Ri^T) + Pi (.) Ct-1 + Wbi + Rbi)
-    i_t = handleFusion(clip(add(i_t, mul(p_i, initial_cell_state)), m_clip), activationVals); // guessing as scratch buffer
+    i_t = handleFusion(clip(add(i_t, mul(p_i, initial_cell_state)), m_clip), activationVals); 
 
     if (isCIFGEnabled) {
         // Couple input with forget gate: 1 - i_t
@@ -445,28 +445,52 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     // ot (.) h(Ct)
     auto H = mul(o_t, handleFusion(clip(C, m_clip), activationVals)); // h_t 
 
-    // concat to create nnapi output node
-    std::vector<std::shared_ptr<ngraph::Node>> lstmOpVector;
-    lstmOpVector.push_back(i_t);
-    lstmOpVector.push_back(H);
-    lstmOpVector.push_back(C);
-    lstmOpVector.push_back(o_t);
+    std::vector<std::shared_ptr<ngraph::Node>> scratchBuffVector;
 
-    lstmNode = std::make_shared<ngraph::opset3::Concat>(lstmOpVector, concat_axis);
+    if(isCIFGEnabled){
+        scratchBuffVector.push_back(f_t);
+        scratchBuffVector.push_back(C);
+        scratchBuffVector.push_back(o_t);
+    } else {
+        scratchBuffVector.push_back(i_t);
+        scratchBuffVector.push_back(f_t);
+        scratchBuffVector.push_back(C);
+        scratchBuffVector.push_back(o_t);
+    }
 
-    auto outputName = lstmNode->outputs()[0].get_node()->get_friendly_name();
-    ALOGD("Output name: %s", outputName.c_str());
+    auto scratchBuffNode = std::make_shared<ngraph::opset3::Concat>(scratchBuffVector, concat_axis);
+
+    auto scratchBuffNodeOutputName = scratchBuffNode->outputs()[0].get_node()->get_friendly_name();
+    auto hOutputName = H->outputs()[0].get_node()->get_friendly_name();
+    auto cOutputName = C->outputs()[0].get_node()->get_friendly_name();
+    auto o_tOutputName = o_t->outputs()[0].get_node()->get_friendly_name();
+    ALOGD("scratchBuffNode Output name: %s", scratchBuffNodeOutputName.c_str());
+    ALOGD("H Output name: %s", hOutputName.c_str());
+    ALOGD("C Output name: %s", cOutputName.c_str());
+    ALOGD("o_t Output name: %s", o_tOutputName.c_str());
 
     switch (mModelInfo->getOperandLifetime(nnApiOp.outputs[0])) {
         case OperandLifeTime::TEMPORARY_VARIABLE:
             ALOGD("Output lifetime TEMPORARY_VARIABLE");
-            mNwCreator->addIntermediateNode(nnApiOp.outputs[0], lstmNode->outputs()[0]);
-            mNwCreator->mapIntermediateNodeOutput(nnApiOp.outputs[0], lstmNode, 0);
+            mNwCreator->addIntermediateNode(nnApiOp.outputs[0], scratchBuffNode->outputs()[0]);
+            mNwCreator->addIntermediateNode(nnApiOp.outputs[1], H->outputs()[0]);
+            mNwCreator->addIntermediateNode(nnApiOp.outputs[2], C->outputs()[0]);
+            mNwCreator->addIntermediateNode(nnApiOp.outputs[3], o_t->outputs()[0]);
+            mNwCreator->mapIntermediateNodeOutput(nnApiOp.outputs[0], scratchBuffNode, 0);
+            mNwCreator->mapIntermediateNodeOutput(nnApiOp.outputs[1], H, 1);
+            mNwCreator->mapIntermediateNodeOutput(nnApiOp.outputs[2], C, 2);
+            mNwCreator->mapIntermediateNodeOutput(nnApiOp.outputs[3], o_t, 3);
             break;
         case OperandLifeTime::MODEL_OUTPUT:
             ALOGD("Output lifetime MODEL_OUTPUT");
-            mNwCreator->addResultNode(nnApiOp.outputs[0], lstmNode);
-            mNwCreator->addLayerMetadata(nnApiOp.outputs[0], LayerInfo(outputName, false), false);
+            mNwCreator->addResultNode(nnApiOp.outputs[0], scratchBuffNode);
+            mNwCreator->addResultNode(nnApiOp.outputs[1], H);
+            mNwCreator->addResultNode(nnApiOp.outputs[2], C);
+            mNwCreator->addResultNode(nnApiOp.outputs[3], o_t);
+            mNwCreator->addLayerMetadata(nnApiOp.outputs[0], LayerInfo(scratchBuffNodeOutputName, false), false);
+            mNwCreator->addLayerMetadata(nnApiOp.outputs[1], LayerInfo(hOutputName, false), false);
+            mNwCreator->addLayerMetadata(nnApiOp.outputs[2], LayerInfo(cOutputName, false), false);
+            mNwCreator->addLayerMetadata(nnApiOp.outputs[3], LayerInfo(o_tOutputName, false), false);
             break;
         default:
             ALOGE("Unsupported lifetime for output node: %d",
