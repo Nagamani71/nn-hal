@@ -424,7 +424,7 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     auto o_t = split_gates.at(3);
 
     // f(Xt*(Wi^T) + Ht-1*(Ri^T) + Pi (.) Ct-1 + Wbi + Rbi)
-    i_t = handleFusion(clip(add(i_t, mul(p_i, initial_cell_state)), m_clip), activationVals); 
+    i_t = handleFusion(clip(add(i_t, mul(p_i, initial_cell_state)), m_clip), 6); 
 
     if (isCIFGEnabled) {
         // Couple input with forget gate: 1 - i_t
@@ -434,13 +434,13 @@ bool LSTM::createNode(const Operation& nnApiOp) {
                   i_t);
     } else {
         // f(Xt*(Wf^T) + Ht-1*(Rf^T) + Pf (.) Ct-1 + Wbf + Rbf)
-        f_t = handleFusion(clip(add(f_t, mul(p_f, initial_cell_state)), m_clip), activationVals);
+        f_t = handleFusion(clip(add(f_t, mul(p_f, initial_cell_state)), m_clip), 6);
     }
 
      // ft (.) Ct-1 + it (.) ct
     auto C = add(mul(f_t, initial_cell_state), mul(i_t, handleFusion(clip(c_t, m_clip), activationVals))); // C_t
     // f(Xt*(Wo^T) + Ht-1*(Ro^T) + Po (.) Ct + Wbo + Rbo)
-    o_t = handleFusion(clip(add(o_t, mul(p_o, C)), m_clip), activationVals); // o_t
+    o_t = handleFusion(clip(add(o_t, mul(p_o, C)), m_clip), 6); // o_t
 
     // ot (.) h(Ct)
     auto H = mul(o_t, handleFusion(clip(C, m_clip), activationVals)); // h_t 
