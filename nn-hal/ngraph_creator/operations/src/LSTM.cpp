@@ -297,7 +297,7 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     std::vector<std::string> activations;
     const std::vector<float>& activations_alpha = {};
     const std::vector<float>& activations_beta = {};
-    float m_clip = 0.f;
+    float m_clip = 0.f, p_clip = 0.f;
     bool input_forget = false;
     std::shared_ptr<ngraph::Node> lstmNode;
     std::string activationName;
@@ -327,7 +327,7 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     hidden_size = (std::size_t)&initial_hidden_state->get_shape()[1];
     ALOGD("size of initial_hidden_state is %d", &initial_hidden_state->get_shape()[1]);
 
-    m_clip = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 21);
+    m_clip = (float) mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 21); //TODO: changes to float
 
     ALOGD("========> Creating CIFG inputWeight node");
     inputWeight = createNode(nnApiOp, 1);
@@ -442,6 +442,20 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     // f(Xt*(Wo^T) + Ht-1*(Ro^T) + Po (.) Ct + Wbo + Rbo)
     o_t = handleFusion(clip(add(o_t, mul(p_o, C)), m_clip), 6); // o_t
 
+    // std::shared_ptr<ngraph::Node> H;
+
+    // auto projection_weights1 = createNode(nnApiOp, 16);   
+    // auto projection_bias1 = createNode(nnApiOp, 17);   
+    // p_clip = mModelInfo->ParseOperationInput<float>(nnApiOp, 22);
+
+    // if(isRecurrentProjectionLayer) {
+    //     auto projWeightsProduct = make_shared<ngraph::op::Dot>(projection_weights1, mul(o_t, handleFusion(clip(C, m_clip), activationVals)));
+    //     // clip(W_{proj}(o_t odot g(C_t))+b_{proj}, t_{proj})
+    //     H = clip(add(projWeightsProduct, projection_bias1), p_clip); //TODO: check for bias no value
+    // } else{
+    //     // ot (.) h(Ct)
+    //     H = mul(o_t, handleFusion(clip(C, m_clip), activationVals)); // h_t 
+    // }
     // ot (.) h(Ct)
     auto H = mul(o_t, handleFusion(clip(C, m_clip), activationVals)); // h_t 
 
