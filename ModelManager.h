@@ -178,6 +178,8 @@ public:
         }
     }
 
+    bool isOperandDataNull(int operationIndex, uint32_t index);
+
 private:
     bool initializeRunTimeOperandInfo();
 

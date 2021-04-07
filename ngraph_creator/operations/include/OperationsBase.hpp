@@ -7,6 +7,7 @@
 #include <NgraphNodes.hpp>
 #include <ngraph/ngraph.hpp>
 #include <ngraph/opsets/opset3.hpp>
+#include <ngraph/builder/split.hpp>
 
 #include "ModelManager.h"
 
