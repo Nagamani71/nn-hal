@@ -142,13 +142,13 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     // inputs
     const auto& input = mModelInfo->getOperand(nnApiOp.inputs[0]);
     //input2input is not required in case of no CIFG
-    const auto& input2input_weights = mModelInfo->getOperand(nnApiOp.inputs[1]); //optional, for CIFG no value
-    const auto& input2forget_weights = mModelInfo->getOperand(nnApiOp.inputs[2]);
-    const auto& input2cell_weights = mModelInfo->getOperand(nnApiOp.inputs[3]);
+    const auto& input2input_weights = mModelInfo->getOperand(nnApiOp.inputs[1]); // optional, for CIFG no value
+    const auto& input2forget_weights = mModelInfo->getOperand(nnApiOp.inputs[2]); 
+    const auto& input2cell_weights = mModelInfo->getOperand(nnApiOp.inputs[3]); 
     const auto& input2output_weights = mModelInfo->getOperand(nnApiOp.inputs[4]);
 
-    const auto& recurrent2input_weights = mModelInfo->getOperand(nnApiOp.inputs[5]); //optional, for CIFG no value
-    const auto& recurrent2forget_weights = mModelInfo->getOperand(nnApiOp.inputs[6]);
+    const auto& recurrent2input_weights = mModelInfo->getOperand(nnApiOp.inputs[5]); // W_{hi} optional, for CIFG no value
+    const auto& recurrent2forget_weights = mModelInfo->getOperand(nnApiOp.inputs[6]); 
     const auto& recurrent2cell_weights = mModelInfo->getOperand(nnApiOp.inputs[7]);
     const auto& recurrent2output_weights = mModelInfo->getOperand(nnApiOp.inputs[8]);
 
@@ -304,30 +304,23 @@ bool LSTM::createNode(const Operation& nnApiOp) {
 
     auto activationVals = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 20);
 
-    // for (auto val : activationVals) {
         if(activationVals == 0){
-            // activations.push_back(""); //TODO: how to handle none
             activationName = ""; //TODO: how to handle none
         } else if(activationVals == 1){
-            // activations.push_back("relu");
             activationName = "relu";
         } else if(activationVals == 3){
-            // activations.push_back("relu6"); //relu6 not there in openvino, how to handle?
             activationName = "relu6";
         } else if(activationVals == 4){
-            // activations.push_back("tanh");
             activationName = "tanh";
         } else if(activationVals == 6){
-            // activations.push_back("sigmoid");
             activationName = "sigmoid";
         }
-    // }
 
     // TODO: calculate properly, changed compile now, but check at runtime
     hidden_size = (std::size_t)&initial_hidden_state->get_shape()[1];
     ALOGD("size of initial_hidden_state is %d", &initial_hidden_state->get_shape()[1]);
 
-    m_clip = (float) mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 21); //TODO: changes to float
+    m_clip = (float) mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 21); //TODO: change to float
 
     ALOGD("========> Creating CIFG inputWeight node");
     inputWeight = createNode(nnApiOp, 1);
@@ -446,7 +439,7 @@ bool LSTM::createNode(const Operation& nnApiOp) {
 
     // auto projection_weights1 = createNode(nnApiOp, 16);   
     // auto projection_bias1 = createNode(nnApiOp, 17);   
-    // p_clip = mModelInfo->ParseOperationInput<float>(nnApiOp, 22);
+    // p_clip = (float) mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 22); //TODO: change back to float
 
     // if(isRecurrentProjectionLayer) {
     //     auto projWeightsProduct = make_shared<ngraph::op::Dot>(projection_weights1, mul(o_t, handleFusion(clip(C, m_clip), activationVals)));
@@ -456,6 +449,7 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     //     // ot (.) h(Ct)
     //     H = mul(o_t, handleFusion(clip(C, m_clip), activationVals)); // h_t 
     // }
+    
     // ot (.) h(Ct)
     auto H = mul(o_t, handleFusion(clip(C, m_clip), activationVals)); // h_t 
 
