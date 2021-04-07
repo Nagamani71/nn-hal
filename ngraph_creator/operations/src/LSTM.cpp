@@ -9,9 +9,6 @@ namespace nnhal {
 
 LSTM::LSTM(int operationIndex) : OperationsBase(operationIndex) {
     mDefaultOutputIndex = sModelInfo->getOperationOutput(mNnapiOperationIndex, 0);
-    outputIndex1 = sModelInfo->getOperationOutput(mNnapiOperationIndex, 1);
-    outputIndex2 = sModelInfo->getOperationOutput(mNnapiOperationIndex, 2);
-    outputIndex3 = sModelInfo->getOperationOutput(mNnapiOperationIndex, 3);
 }
 
 bool LSTM::validate() {
@@ -56,7 +53,7 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
     if (sModelInfo->isOperandDataNull(mNnapiOperationIndex, 1) &&
         sModelInfo->isOperandDataNull(mNnapiOperationIndex, 5) &&
         sModelInfo->isOperandDataNull(mNnapiOperationIndex, 12)) {
-        isCIFGEnabled = true;
+        isCIFGenabled = true;
     }
 
     if (!sModelInfo->isOperandDataNull(mNnapiOperationIndex, 9) &&
@@ -102,9 +99,9 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
     auto output_gate_bias = getInputNode<float>(15);
 
     // Create weight, reccurence and bias tensors W, R, B
-    auto W = make_shared<opset1::Concat>(ngraph::NodeVector{input2input_weights, input2forget_weights, input2cell_weights, input2output_weights}, 1);
-    auto R = make_shared<opset1::Concat>(ngraph::NodeVector{recurrent2input_weights, recurrent2forget_weights, recurrent2cell_weights, recurrent2output_weights}, 1);
-    auto B = make_shared<opset1::Concat>(ngraph::NodeVector{input_gate_bias, forget_gate_bias, cell_bias, output_gate_bias}, 1); // TODO: check bias if any error in output
+    auto W = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{input2input_weights, input2forget_weights, input2cell_weights, input2output_weights}, 1);
+    auto R = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{recurrent2input_weights, recurrent2forget_weights, recurrent2cell_weights, recurrent2output_weights}, 1);
+    auto B = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{input_gate_bias, forget_gate_bias, cell_bias, output_gate_bias}, 1); // TODO: check bias if any error in output
 
     std::shared_ptr<ngraph::Node> P; // for peephole
 
@@ -113,7 +110,7 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
         auto cell2input_weights = getInputNode<float>(9);
         auto cell2forget_weights = getInputNode<float>(10);
         auto cell2output_weights = getInputNode<float>(11);
-        P = make_shared<opset1::Concat>(ngraph::NodeVector{cell2input_weights, cell2forget_weights, cell2output_weights}, 1);
+        P = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{cell2input_weights, cell2forget_weights, cell2output_weights}, 1);
     } else {
         // Create default peephole 
         ngraph::Shape peepholeshape = ngraph::Shape(3*hidden_size);
@@ -123,7 +120,7 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
 
     auto activationFn = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 20);
 
-    auto cell_state_clipping = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 21); // change to float
+    auto cell_state_clipping = sModelInfo->ParseOperationInput<float>(mNnapiOperationIndex, 21);
 
     ngraph::Shape scratchBuffer_shape;
     std::shared_ptr<ngraph::Node> scratchBuffer;
@@ -148,9 +145,9 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
     auto o_t = split_gates.at(3);
 
     // f(Xt*(Wi^T) + Ht-1*(Ri^T) + Pi (.) Ct-1 + Wbi + Rbi)
-    i_t = activationFuntion(clip(add(i_t, mul(p_i, initial_cell_state)), cell_state_clipping), 6); 
+    i_t = applyActivation(clip(add(i_t, mul(p_i, initial_cell_state)), cell_state_clipping), 6); 
 
-    if (isCIFGEnabled) {
+    if (isCIFGenabled) {
         // Couple input with forget gate: 1 - i_t
         f_t = sub(ngraph::op::Constant::create(i_t->get_element_type(),
                                        i_t->get_shape(),
@@ -159,21 +156,25 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
         scratchBuffer_shape = ngraph::Shape(3*hidden_size);
     } else {
         // f(Xt*(Wf^T) + Ht-1*(Rf^T) + Pf (.) Ct-1 + Wbf + Rbf)
-        f_t = activationFuntion(clip(add(f_t, mul(p_f, initial_cell_state)), cell_state_clipping), 6);
+        f_t = applyActivation(clip(add(f_t, mul(p_f, initial_cell_state)), cell_state_clipping), 6);
         scratchBuffer_shape = ngraph::Shape(4*hidden_size);
     }
 
      // ft (.) Ct-1 + it (.) ct
-    auto C = add(mul(f_t, initial_cell_state), mul(i_t, activationFuntion(clip(c_t, cell_state_clipping), activationFn))); // C_t
+    auto C = add(mul(f_t, initial_cell_state), mul(i_t, applyActivation(clip(c_t, cell_state_clipping), activationFn))); // C_t
     // f(Xt*(Wo^T) + Ht-1*(Ro^T) + Po (.) Ct + Wbo + Rbo)
-    o_t = activationFuntion(clip(add(o_t, mul(p_o, C)), cell_state_clipping), 6); // o_t
+    o_t = applyActivation(clip(add(o_t, mul(p_o, C)), cell_state_clipping), 6); // o_t
 
     // ot (.) h(Ct)
-    auto H = mul(o_t, activationFuntion(clip(C, cell_state_clipping), activationFn)); // h_t 
+    auto H = mul(o_t, applyActivation(clip(C, cell_state_clipping), activationFn)); // h_t 
     
     // Creating scratch buffer
     scratchBuffer = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), scratchBuffer_shape, std::vector<float>{0.f});
     
+    auto outputIndex1 = sModelInfo->getOperationOutput(mNnapiOperationIndex, 1);
+    auto outputIndex2 = sModelInfo->getOperationOutput(mNnapiOperationIndex, 2);
+    auto outputIndex3 = sModelInfo->getOperationOutput(mNnapiOperationIndex, 3);
+
     mNgraphNodes->setOutputAtOperandIndex(outputIndex1, H);
     mNgraphNodes->setOutputAtOperandIndex(outputIndex2, C);
     mNgraphNodes->setOutputAtOperandIndex(outputIndex3, o_t);
@@ -202,7 +203,7 @@ std::shared_ptr<ngraph::Node> LSTM::mul(const ngraph::Output<ngraph::Node>& lhs,
 std::shared_ptr<ngraph::Node> LSTM::clip(const ngraph::Output<ngraph::Node>& data, float m_clip) const {
     return make_shared<ngraph::op::Clamp>(data, -m_clip, m_clip);
 }
-std::shared_ptr<ngraph::Node> LSTM::activationFuntion(const std::shared_ptr<ngraph::Node>& arg, int activationFn) const {
+std::shared_ptr<ngraph::Node> LSTM::applyActivation(const std::shared_ptr<ngraph::Node>& arg, int activationFn) const {
     switch(activationFn){
         case 1:
             return std::make_shared<ngraph::opset3::Relu>(arg);
@@ -227,7 +228,7 @@ std::shared_ptr<ngraph::Node> LSTM::activationFuntion(const std::shared_ptr<ngra
 
     // auto projection_weights = getInputNode<float>(16);   
     // auto projection_bias = getInputNode<float>(17);
-    // float p_clip = (float) sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 22); //TODO: change back to float
+    // float p_clip = sModelInfo->ParseOperationInput<float>(mNnapiOperationIndex, 22); //TODO: change back to float
 
     // if(isProjectionUsed) {
     //     auto projWeightsProduct = make_shared<ngraph::op::Dot>(projection_weights1, mul(o_t, handleFusion(clip(C, m_clip), activationVals)));

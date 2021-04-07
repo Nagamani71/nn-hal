@@ -412,6 +412,7 @@ bool NnapiModelInfo::isOperandDataNull(int operationIndex, uint32_t index) {
 template int NnapiModelInfo::GetConstOperand<int>(unsigned int);
 template unsigned int NnapiModelInfo::GetConstOperand<unsigned int>(unsigned int);
 template int NnapiModelInfo::GetConstFromBuffer<int>(unsigned char const*, unsigned int);
+template float NnapiModelInfo::GetConstFromBuffer<float>(unsigned char const*, unsigned int);
 
 }  // namespace nnhal
 }  // namespace neuralnetworks
