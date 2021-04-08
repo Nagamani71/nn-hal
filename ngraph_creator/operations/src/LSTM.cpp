@@ -101,7 +101,9 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
     // Create weight, reccurence and bias tensors W, R, B
     auto W = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{input2input_weights, input2forget_weights, input2cell_weights, input2output_weights}, 1);
     auto R = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{recurrent2input_weights, recurrent2forget_weights, recurrent2cell_weights, recurrent2output_weights}, 1);
-    auto B = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{input_gate_bias, forget_gate_bias, cell_bias, output_gate_bias}, 1); // TODO: check bias if any error in output
+    auto wb = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{input_gate_bias, forget_gate_bias, cell_bias, output_gate_bias}, 1); // TODO: check bias if any error in output
+    auto rb = std::make_shared<ngraph::opset3::Constant>(wb->get_element_type(), wb->get_shape(), std::vector<float>{0.f});
+    auto B = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{wb, rb}, 1); // TODO: check bias if any error in output
 
     std::shared_ptr<ngraph::Node> P; // for peephole
 

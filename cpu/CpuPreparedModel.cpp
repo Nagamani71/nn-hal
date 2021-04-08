@@ -32,6 +32,15 @@ bool CpuPreparedModel::initialize(const Model& model) {
     }
     mNgc = std::make_shared<NgraphNetworkCreator>(mModelInfo, mTargetDevice);
 
+    int count = model.operations.size();
+    std::vector<bool> supported(count, true);
+
+    mNgc->getSupportedOperations(supported);
+
+    for(int i=0; i<supported.size(); i++){
+        if(!supported[i]) return false;
+    }
+
     if (!mNgc->validateOperations()) return false;
     ALOGI("Generating IR Graph");
     auto ngraph_function = mNgc->generateGraph();
