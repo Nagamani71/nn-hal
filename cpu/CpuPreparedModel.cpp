@@ -35,11 +35,14 @@ bool CpuPreparedModel::initialize(const Model& model) {
     if (!mNgc->validateOperations()) return false;
     ALOGI("Generating IR Graph");
     auto ngraph_function = mNgc->generateGraph();
+    ALOGI("after ngraph_function initialization");
     if (ngraph_function == nullptr) {
         ALOGE("%s ngraph generation failed", __func__);
         return false;
     }
+    ALOGI("before setting ngraph_net");
     auto ngraph_net = std::make_shared<InferenceEngine::CNNNetwork>(ngraph_function);
+    ALOGI("after setting ngraph_net");
     ngraph_net->serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
                           "/data/vendor/neuralnetworks/ngraph_ir.bin");
     mPlugin = std::make_shared<IENetwork>(ngraph_net);
