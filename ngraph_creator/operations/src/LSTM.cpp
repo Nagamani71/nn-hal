@@ -20,27 +20,89 @@ bool LSTM::validate() {
 
     // TODO: check input size in case of non-cifg, no peephole and no layer normalization
     const auto& inputsSize = sModelInfo->getOperationInputsSize(mNnapiOperationIndex);
+    const auto& outputsSize = sModelInfo->getOperationOutputsSize(mNnapiOperationIndex);
     ALOGI("LSTM input size is %d : ", inputsSize);
 
-    // Check all input types 0-19 and 23-26
-    for (int i = 0; i <= 19; i++) {
+    if (inputsSize != 23 || inputsSize != 27) return false;
+
+    if (outputsSize != 4) return false;
+
+    // check 0, 18, 19 input values
+    ALOGI("LSTM input checking 0 ");
+    if (!checkInputOperandType(0, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+    ALOGI("LSTM input checking 18 ");
+    if (!checkInputOperandType(18, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+    ALOGI("LSTM input checking 19 ");
+    if (!checkInputOperandType(19, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+
+    // // Check all input types 0-19 and 23-26
+    // for (int i = 0; i <= 19; i++) {
+    //     if (!checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+    // }
+
+    // check input type for 2,3,4
+    ALOGI("LSTM input checking 2-4 ");
+    for (int i = 2; i <= 4; i++) {
         if (!checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
-    }
-    for (int i = 23; i <= 26; i++) {
-        if (!checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
-    }
-    // check input activation type
-    if (!checkInputOperandType(20, (int32_t)OperandType::INT32)) {
-        return false;
-    }
-    // check input clipping threashold for cell state and output projection layer
-    for (int i = 21; i <= 22; i++) {
-        if (!checkInputOperandType(20, (int32_t)OperandType::FLOAT32)) return false;
     }
 
+    // check input type for 6,7,8
+    ALOGI("LSTM input checking 6-8 ");
+    for (int i = 6; i <= 8; i++) {
+        if (!checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+    }
+
+    // check input type for 13,14,15
+    ALOGI("LSTM input checking 13-15 ");
+    for (int i = 13; i <= 15; i++) {
+        if (!checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+    }
+
+    // check input activation type
+    ALOGI("LSTM input checking 20 ");
     if (!checkInputOperandType(20, (int32_t)OperandType::INT32)) {
         return false;
     }
+    // check input clipping threashold for cell state and output projection layer\
+    ALOGI("LSTM input checking 21,22 ");
+    for (int i = 21; i <= 22; i++) {
+        if (!checkInputOperandType(i, (int32_t)OperandType::FLOAT32)) return false;
+    }
+    
+    if (inputsSize == 27) {
+        ALOGI("LSTM input checking 23-26 ");
+        for (int i = 23; i <= 26; i++) {
+            if (!checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+        }
+    }
+
+    if (!sModelInfo->isOperandDataNull(mNnapiOperationIndex, 1) &&
+        !sModelInfo->isOperandDataNull(mNnapiOperationIndex, 5) &&
+        !sModelInfo->isOperandDataNull(mNnapiOperationIndex, 12)) {
+        // CIFG diabled, check input types
+        ALOGI("LSTM input checking 1,5,12 ");
+        if (!checkInputOperandType(1, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+        if (!checkInputOperandType(5, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+        if (!checkInputOperandType(12, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+
+    }
+
+    if (!sModelInfo->isOperandDataNull(mNnapiOperationIndex, 9) &&
+        !sModelInfo->isOperandDataNull(mNnapiOperationIndex, 10) &&
+        !sModelInfo->isOperandDataNull(mNnapiOperationIndex, 11)) {
+        // peephole enabled, check input types
+        ALOGI("LSTM input checking 9,10,11 ");
+        if (!checkInputOperandType(9, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+        if (!checkInputOperandType(10, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+        if (!checkInputOperandType(11, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+    }
+
+    if (!sModelInfo->isOperandDataNull(mNnapiOperationIndex, 16)) {
+        // projection used, check input types
+        ALOGI("LSTM input checking 16 ");
+        if (!checkInputOperandType(16, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+    }
+
     
     ALOGV("%s PASSED", __func__);
     return true;
