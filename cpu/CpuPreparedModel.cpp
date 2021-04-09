@@ -52,17 +52,16 @@ bool CpuPreparedModel::initialize(const Model& model) {
     }
     std::shared_ptr<InferenceEngine::CNNNetwork> ngraph_net;
     try{
-        ALOGI("before setting ngraph_net");
+        ALOGI("setting ngraph_net");
         ngraph_net = std::make_shared<InferenceEngine::CNNNetwork>(ngraph_function);
-        ALOGI("after setting ngraph_net");
+        ALOGI("serializing ngraph_net");
+        ngraph_net->serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
+                          "/data/vendor/neuralnetworks/ngraph_ir.bin");
+        ALOGI("serializing ngraph_net completed");
     } catch (const std::exception& ex) {
         ALOGE("%s Exception !!! %s", __func__, ex.what());
         return false;
     }
-    
-
-    ngraph_net->serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
-                          "/data/vendor/neuralnetworks/ngraph_ir.bin");
     mPlugin = std::make_shared<IENetwork>(ngraph_net);
     mPlugin->loadNetwork();
 

@@ -41,8 +41,11 @@ protected:
         if (sModelInfo->isOperandLifeTimeConst(operandIndex)) {
             auto operandValues = sModelInfo->GetConstVecOperand<T>(operandIndex);
             auto operandDims = getInputOperandDimensions(inputIndex);
-            return std::make_shared<ngraph::opset3::Constant>(
-                ngraph::element::f32, toNgraphShape(operandDims), operandValues);
+            if (operandDims[0] != 0)
+                return std::make_shared<ngraph::opset3::Constant>(
+                    ngraph::element::f32, toNgraphShape(operandDims), operandValues);
+            else
+                return nullptr;
         } else
             return mNgraphNodes->getOperationOutput(operandIndex).get_node_shared_ptr();
     }

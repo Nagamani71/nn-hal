@@ -34,20 +34,22 @@ bool NgraphNetworkCreator::createInputParams() {
         auto& nnapiOperand = mModelInfo->getOperand(i);
         auto& dims = nnapiOperand.dimensions;
         ALOGI("createInputParams operand %d dims.size(%d)", i, dims.size());
-        switch (nnapiOperand.type) {
-            case OperandType::FLOAT32:
-            case OperandType::TENSOR_FLOAT32:
-                inputParam = std::make_shared<ngraph::opset3::Parameter>(
-                    ngraph::element::f32, ngraph::Shape(dims.begin(), dims.end()));
-                ALOGV("createInputParams created inputIndex %d, type %d", i, nnapiOperand.type);
-                break;
-            default:
-                ALOGE("createInputParams Failure at inputIndex %d, type %d", i, nnapiOperand.type);
-                inputParam = nullptr;
-                return false;
+        if(dims[0] != 0){
+            switch (nnapiOperand.type) {
+                case OperandType::FLOAT32:
+                case OperandType::TENSOR_FLOAT32:
+                        inputParam = std::make_shared<ngraph::opset3::Parameter>(
+                            ngraph::element::f32, ngraph::Shape(dims.begin(), dims.end()));
+                        ALOGV("createInputParams created inputIndex %d, type %d", i, nnapiOperand.type);
+                    break;
+                default:
+                    ALOGE("createInputParams Failure at inputIndex %d, type %d", i, nnapiOperand.type);
+                    inputParam = nullptr;
+                    return false;
+            }
+            mNgraphNodes->addInputParam(inputParam);
+            mNgraphNodes->setOutputAtOperandIndex(i, inputParam);
         }
-        mNgraphNodes->addInputParam(inputParam);
-        mNgraphNodes->setOutputAtOperandIndex(i, inputParam);
     }
     return true;
 }

@@ -222,7 +222,6 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
 
     auto cell_state_clipping = sModelInfo->ParseOperationInput<float>(mNnapiOperationIndex, 21);
 
-    ngraph::Shape scratchBuffer_shape;
     std::shared_ptr<ngraph::Node> scratchBuffer;
 
     ALOGI("splitting P ");
@@ -233,10 +232,10 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
 
     ALOGI("creating default Xt*(W^T) ");
     // Xt*(W^T) -- for [iofc] gates.
-    auto Xt_W = make_shared<ngraph::op::Dot>(inputNode, W);
+    auto Xt_W = std::make_shared<ngraph::op::Dot>(inputNode, W);
     ALOGI("creating default Ht_R ");
     // Ht-1*(R^T)  -- for [iofc] gates.
-    auto Ht_R = make_shared<ngraph::op::Dot>(initial_hidden_state, R);
+    auto Ht_R = std::make_shared<ngraph::op::Dot>(initial_hidden_state, R);
     ALOGI("creating gates ");
     // Xt*(W^T) + Ht-1*(R^T) + Wb + Rb  -- for [iofc] gates.
     auto gates = add(Xt_W, add(Ht_R, B));
@@ -259,12 +258,12 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
                                        i_t->get_shape(),
                                        std::vector<float>(shape_size(i_t->get_shape()), 1.f)),
                   i_t);
-        scratchBuffer_shape = ngraph::Shape(3*hidden_size);
+        scratchBuffer = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{1, 3 * hidden_size}, std::vector<float>{0.f});
     } else {
         ALOGI("CIFG disable, creating f_t ");
         // f(Xt*(Wf^T) + Ht-1*(Rf^T) + Pf (.) Ct-1 + Wbf + Rbf)
         f_t = applyActivation(clip(add(f_t, mul(p_f, initial_cell_state)), cell_state_clipping), 6);
-        scratchBuffer_shape = ngraph::Shape(4*hidden_size);
+        scratchBuffer = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{1, 4 * hidden_size}, std::vector<float>{0.f});
     }
 
     ALOGI("creating C ");
@@ -277,28 +276,19 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
     ALOGI("creating H ");
     // ot (.) h(Ct)
     auto H = mul(o_t, applyActivation(clip(C, cell_state_clipping), activationFn)); // h_t 
-    
-    // Creating scratch buffer
-    if (isCIFGenabled) {
-        scratchBuffer = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{3 * hidden_size}, std::vector<float>{0.f});
-    } else {
-        scratchBuffer = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{4 * hidden_size}, std::vector<float>{0.f});
-    }
-    
-    auto outputIndex1 = sModelInfo->getOperationOutput(mNnapiOperationIndex, 1);
-    auto outputIndex2 = sModelInfo->getOperationOutput(mNnapiOperationIndex, 2);
-    auto outputIndex3 = sModelInfo->getOperationOutput(mNnapiOperationIndex, 3);
-    
-    mNgraphNodes->setOutputAtOperandIndex(outputIndex1, H);
-    mNgraphNodes->setOutputAtOperandIndex(outputIndex2, C);
-    mNgraphNodes->setOutputAtOperandIndex(outputIndex3, o_t);
 
-    const auto op = sModelInfo->getOperand(mDefaultOutputIndex);
-    if (op.lifetime == OperandLifeTime::MODEL_OUTPUT) {
-        addResultNode(mDefaultOutputIndex, scratchBuffer);
-        addResultNode(outputIndex1, H);
-        addResultNode(outputIndex2, C);
-        addResultNode(outputIndex3, o_t);
+    std::vector<std::shared_ptr<ngraph::Node>> LstmOutputs(4, nullptr);
+    LstmOutputs[0] = scratchBuffer;
+    LstmOutputs[1] = H;
+    LstmOutputs[2] = C;
+    LstmOutputs[3] = o_t;
+    for(int i = 0; i < 4; i++) {
+        auto outputIndex = sModelInfo->getOperationOutput(mNnapiOperationIndex, i);
+        mNgraphNodes->setOutputAtOperandIndex(outputIndex, LstmOutputs[i]);
+        const auto op = sModelInfo->getOperand(outputIndex);
+        if (op.lifetime == OperandLifeTime::MODEL_OUTPUT) {
+            addResultNode(outputIndex, LstmOutputs[i]);
+        }
     }
     return scratchBuffer;
 }
