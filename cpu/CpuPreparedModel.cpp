@@ -10,6 +10,8 @@
 #include "ValidateHal.h"
 #include "utils.h"
 
+#include <ngraph/pass/visualize_tree.hpp>
+
 using namespace android::nn;
 
 namespace android {
@@ -36,13 +38,29 @@ bool CpuPreparedModel::initialize(const Model& model) {
     ALOGI("Generating IR Graph");
     auto ngraph_function = mNgc->generateGraph();
     ALOGI("after ngraph_function initialization");
+
+    std::vector<std::shared_ptr<ngraph::Function>> testfn;
+    testfn.push_back(ngraph_function);
+
+    ALOGI("before visualize tree");
+    ngraph::pass::VisualizeTree("/data/vendor/neuralnetworks/after.png").run_on_module(testfn); 
+    ALOGI("after visualize tree");
+
     if (ngraph_function == nullptr) {
         ALOGE("%s ngraph generation failed", __func__);
         return false;
     }
-    ALOGI("before setting ngraph_net");
-    auto ngraph_net = std::make_shared<InferenceEngine::CNNNetwork>(ngraph_function);
-    ALOGI("after setting ngraph_net");
+    std::shared_ptr<InferenceEngine::CNNNetwork> ngraph_net;
+    try{
+        ALOGI("before setting ngraph_net");
+        ngraph_net = std::make_shared<InferenceEngine::CNNNetwork>(ngraph_function);
+        ALOGI("after setting ngraph_net");
+    } catch (const std::exception& ex) {
+        ALOGE("%s Exception !!! %s", __func__, ex.what());
+        return false;
+    }
+    
+
     ngraph_net->serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
                           "/data/vendor/neuralnetworks/ngraph_ir.bin");
     mPlugin = std::make_shared<IENetwork>(ngraph_net);

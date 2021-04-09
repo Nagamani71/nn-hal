@@ -288,7 +288,7 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
     auto outputIndex1 = sModelInfo->getOperationOutput(mNnapiOperationIndex, 1);
     auto outputIndex2 = sModelInfo->getOperationOutput(mNnapiOperationIndex, 2);
     auto outputIndex3 = sModelInfo->getOperationOutput(mNnapiOperationIndex, 3);
-
+    
     mNgraphNodes->setOutputAtOperandIndex(outputIndex1, H);
     mNgraphNodes->setOutputAtOperandIndex(outputIndex2, C);
     mNgraphNodes->setOutputAtOperandIndex(outputIndex3, o_t);
@@ -296,6 +296,9 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
     const auto op = sModelInfo->getOperand(mDefaultOutputIndex);
     if (op.lifetime == OperandLifeTime::MODEL_OUTPUT) {
         addResultNode(mDefaultOutputIndex, scratchBuffer);
+        addResultNode(outputIndex1, H);
+        addResultNode(outputIndex2, C);
+        addResultNode(outputIndex3, o_t);
     }
     return scratchBuffer;
 }
