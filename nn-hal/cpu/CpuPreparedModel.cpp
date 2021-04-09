@@ -46,10 +46,16 @@ bool CpuPreparedModel::initialize(const Model& model) {
 
     ALOGI("Generating IR Graph");
     mNet = mNgc->generateIRGraph();
-    mNet->serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
+    try{
+        mNet->serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
                     "/data/vendor/neuralnetworks/ngraph_ir.bin");
-    mPlugin = new IENetwork(mNet);
-    mPlugin->loadNetwork();
+         mPlugin = new IENetwork(mNet);
+        mPlugin->loadNetwork();
+    } catch (const std::exception& ex) {
+        ALOGE("%s Exception !!! %s", __func__, ex.what());
+    }
+    
+   
 
     // ALOGI("initialize ExecuteNetwork for device %s", mTargetDevice.c_str());
     // mEnginePtr = new ExecuteNetwork(mNet, mTargetDevice);

@@ -409,6 +409,7 @@ void* NnapiModelInfo::getBlobFromMemoryPoolOut(const Request& request, uint32_t 
 }
 
 template int NnapiModelInfo::GetConstOperand<int>(unsigned int);
+template float NnapiModelInfo::GetConstOperand<float>(unsigned int);
 template unsigned int NnapiModelInfo::GetConstOperand<unsigned int>(unsigned int);
 template int NnapiModelInfo::GetConstFromBuffer<int>(unsigned char const*, unsigned int);
 

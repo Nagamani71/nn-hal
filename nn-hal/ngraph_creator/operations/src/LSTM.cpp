@@ -9,6 +9,13 @@ namespace neuralnetworks {
 namespace nnhal {
 bool LSTM::validate(const Operation& op, NnapiModelInfo* modelInfo) { 
     ALOGV("Entering %s", __func__);
+    int input_size = op.inputs.size();
+    int output_size = op.outputs.size();
+    ALOGD("input and output size are %d , %d ", input_size, output_size);
+    if(output_size != 4) return false;
+    if(input_size !=23){
+        if (input_size != 27) return false;
+    }
     // inputs
     const auto& input = modelInfo->getOperand(op.inputs[0]);
 
@@ -44,94 +51,74 @@ bool LSTM::validate(const Operation& op, NnapiModelInfo* modelInfo) {
     const auto& cell_state_clipping = modelInfo->getOperand(op.inputs[21]);
     const auto& output_clipping_frmProjection = modelInfo->getOperand(op.inputs[22]);
 
-    const auto& input_layer_normalization_weights = modelInfo->getOperand(op.inputs[22]);
-    const auto& forget_layer_normalization_weights = modelInfo->getOperand(op.inputs[23]);
-    const auto& cell_layer_normalization_weights = modelInfo->getOperand(op.inputs[24]);
-    const auto& output_layer_normalization_weights = modelInfo->getOperand(op.inputs[25]);
+    ALOGD("checking input type");
+    if (input.type != OperandType::TENSOR_FLOAT32) return false;
+    ALOGD("checking output state type");
+    if (output_state.type != OperandType::TENSOR_FLOAT32) return false;
+    ALOGD("checking cell_state  type");
+    if (cell_state.type != OperandType::TENSOR_FLOAT32) return false;
+    ALOGD("checking input2forget_weights  type");
+    if (input2forget_weights.type != OperandType::TENSOR_FLOAT32) return false;
+    ALOGD("checking input2cell_weights  type");
+    if (input2cell_weights.type != OperandType::TENSOR_FLOAT32) return false;
+    ALOGD("checking input2output_weights  type");
+    if (input2output_weights.type != OperandType::TENSOR_FLOAT32) return false;
+    ALOGD("checking recurrent2forget_weights  type");
+    if (recurrent2forget_weights.type != OperandType::TENSOR_FLOAT32) return false;
+    ALOGD("checking recurrent2cell_weights  type");
+    if (recurrent2cell_weights.type != OperandType::TENSOR_FLOAT32) return false;
+    ALOGD("checking recurrent2output_weights  type");
+    if (recurrent2output_weights.type != OperandType::TENSOR_FLOAT32) return false;
+    ALOGD("checking forget_gate_bias  type");
+    if (forget_gate_bias.type != OperandType::TENSOR_FLOAT32) return false;
+    ALOGD("checking cell_bias  type");
+    if (cell_bias.type != OperandType::TENSOR_FLOAT32) return false;
+    ALOGD("checking output_gate_bias  type");
+    if (output_gate_bias.type != OperandType::TENSOR_FLOAT32) return false;
 
-    // outputs
-    const auto& scratch_buffer = modelInfo->getOperand(op.inputs[0]);
-    const auto& output_state1 = modelInfo->getOperand(op.inputs[1]);
-    const auto& cell_state1 = modelInfo->getOperand(op.inputs[2]);
-    const auto& output = modelInfo->getOperand(op.inputs[3]);
-
-    bool isCIFGEnabled = false; //input[1], input[5], input[12] must have values (W_{xi}, W_{hi}, b_i)
-    bool isPeepholeOptimizationEnabled = false; //input[9], input[10], input[11] must have values W_{ci}, W_{cf}, W_{co}
-    bool isRecurrentProjectionLayer = false; //input[16] must have value W_{proj}, input[17] is optional b_{proj}
-    bool isLayerNormalizationEnabled = false; //input[23], input[24], input[25], input[26] must have values
+    if (input_size == 27) {
+        ALOGD("checking normalized input  type");
+        const auto& input_layer_normalization_weights = modelInfo->getOperand(op.inputs[22]);
+        const auto& forget_layer_normalization_weights = modelInfo->getOperand(op.inputs[23]);
+        const auto& cell_layer_normalization_weights = modelInfo->getOperand(op.inputs[24]);
+        const auto& output_layer_normalization_weights = modelInfo->getOperand(op.inputs[25]);
+        if( input_layer_normalization_weights.type != OperandType::TENSOR_FLOAT32 ||
+        forget_layer_normalization_weights.type != OperandType::TENSOR_FLOAT32 || cell_layer_normalization_weights.type != OperandType::TENSOR_FLOAT32 ||
+        output_layer_normalization_weights.type != OperandType::TENSOR_FLOAT32) return false;
+    }
+    ALOGD("checking activation  type");
+    if (activationFn.type != OperandType::INT32) return false;
+     ALOGD("checking clipping  type");
+    if (cell_state_clipping.type != OperandType::FLOAT32 || output_clipping_frmProjection.type != OperandType::FLOAT32) {
+        return false;
+    }
 
     if (modelInfo->isOperandDataNull(op.inputs[1]) &&
         modelInfo->isOperandDataNull(op.inputs[5]) &&
         modelInfo->isOperandDataNull(op.inputs[12])) {
-        isCIFGEnabled = true;
-    }
-
-    if (!modelInfo->isOperandDataNull(op.inputs[9]) &&
-        !modelInfo->isOperandDataNull(op.inputs[10]) &&
-        !modelInfo->isOperandDataNull(op.inputs[11])) {
-        isPeepholeOptimizationEnabled = true;
-    }
-
-    if (!modelInfo->isOperandDataNull(op.inputs[16])) {
-        isRecurrentProjectionLayer = true;
-    }
-
-    if (!modelInfo->isOperandDataNull(op.inputs[23]) &&
-        !modelInfo->isOperandDataNull(op.inputs[24]) &&
-        !modelInfo->isOperandDataNull(op.inputs[25]) &&
-        !modelInfo->isOperandDataNull(op.inputs[26])){
-        isLayerNormalizationEnabled = true;
-    }
-
-    // validate all 2D tensors 
-    if (input.type != OperandType::TENSOR_FLOAT32 || input2forget_weights.type != OperandType::TENSOR_FLOAT32 ||
-        input2cell_weights.type != OperandType::TENSOR_FLOAT32 || input2output_weights.type != OperandType::TENSOR_FLOAT32 ||
-        recurrent2input_weights.type != OperandType::TENSOR_FLOAT32 || recurrent2forget_weights.type != OperandType::TENSOR_FLOAT32 ||
-        recurrent2cell_weights.type != OperandType::TENSOR_FLOAT32 || recurrent2output_weights.type != OperandType::TENSOR_FLOAT32 ||
-        output_state.type != OperandType::TENSOR_FLOAT32 || cell_state.type != OperandType::TENSOR_FLOAT32) {
-        return false;
-    }
-
-    // validate all 1D tensors
-    if (forget_gate_bias.type != OperandType::TENSOR_FLOAT32 || cell_bias.type != OperandType::TENSOR_FLOAT32 ||
-        output_gate_bias.type != OperandType::TENSOR_FLOAT32 || input_layer_normalization_weights.type != OperandType::TENSOR_FLOAT32 ||
-        forget_layer_normalization_weights.type != OperandType::TENSOR_FLOAT32 || cell_layer_normalization_weights.type != OperandType::TENSOR_FLOAT32 ||
-        output_layer_normalization_weights.type != OperandType::TENSOR_FLOAT32) {
-        return false;
-    }  
-
-    // validate optional tensors
-    if(isCIFGEnabled) {
+        ALOGD("checking non CIFG  types");
         if (cell2input_weights.type != OperandType::TENSOR_FLOAT32 || cell2forget_weights.type != OperandType::TENSOR_FLOAT32 ||
             cell2output_weights.type != OperandType::TENSOR_FLOAT32) {
             return false;
         }
     }
 
-    if(isPeepholeOptimizationEnabled) {
+    if (!modelInfo->isOperandDataNull(op.inputs[9]) &&
+        !modelInfo->isOperandDataNull(op.inputs[10]) &&
+        !modelInfo->isOperandDataNull(op.inputs[11])) {
+        ALOGD("checking peephole input  types");
         if (input2input_weights.type != OperandType::TENSOR_FLOAT32 || recurrent2input_weights.type != OperandType::TENSOR_FLOAT32 ||
             cell2input_weights.type != OperandType::TENSOR_FLOAT32) {
             return false;
         }
     }
 
-    if(isRecurrentProjectionLayer) {
+    if (!modelInfo->isOperandDataNull(op.inputs[16])) {
+        ALOGD("checking projection input types");
         if (projection_weights.type != OperandType::TENSOR_FLOAT32 || projection_bias.type != OperandType::TENSOR_FLOAT32) {
             return false;
         }
     }
-
-    // validate clipping types
-    if (cell_state_clipping.type != OperandType::FLOAT32 || output_clipping_frmProjection.type != OperandType::FLOAT32) {
-        return false;
-    }
-
-    // validate output
-    if (scratch_buffer.type != OperandType::TENSOR_FLOAT32 || output_state1.type != OperandType::TENSOR_FLOAT32 ||
-        cell_state1.type != OperandType::TENSOR_FLOAT32 || output.type != OperandType::TENSOR_FLOAT32) {
-        return false;
-    }
-
 
     ALOGV("Exiting %s", __func__);
     return true; 
@@ -186,10 +173,10 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     const auto& output_clipping_frmProjection = mModelInfo->getOperand(nnApiOp.inputs[22]); // for projection
 
     // openvino support not there
-    const auto& input_layer_normalization_weights = mModelInfo->getOperand(nnApiOp.inputs[22]);
-    const auto& forget_layer_normalization_weights = mModelInfo->getOperand(nnApiOp.inputs[23]);
-    const auto& cell_layer_normalization_weights = mModelInfo->getOperand(nnApiOp.inputs[24]);
-    const auto& output_layer_normalization_weights = mModelInfo->getOperand(nnApiOp.inputs[25]);
+    // const auto& input_layer_normalization_weights = mModelInfo->getOperand(nnApiOp.inputs[23]);
+    // const auto& forget_layer_normalization_weights = mModelInfo->getOperand(nnApiOp.inputs[24]);
+    // const auto& cell_layer_normalization_weights = mModelInfo->getOperand(nnApiOp.inputs[25]);
+    // const auto& output_layer_normalization_weights = mModelInfo->getOperand(nnApiOp.inputs[26]);
 
     bool isCIFGEnabled = false; //input[1], input[5], input[12] must have values (W_{xi}, W_{hi}, b_i)
     bool isPeepholeOptimizationEnabled = false; //input[9], input[10], input[11] must have values W_{ci}, W_{cf}, W_{co}
@@ -212,12 +199,12 @@ bool LSTM::createNode(const Operation& nnApiOp) {
         isRecurrentProjectionLayer = true;
     }
 
-    if (!mModelInfo->isOperandDataNull(nnApiOp.inputs[23]) &&
-        !mModelInfo->isOperandDataNull(nnApiOp.inputs[24]) &&
-        !mModelInfo->isOperandDataNull(nnApiOp.inputs[25]) &&
-        !mModelInfo->isOperandDataNull(nnApiOp.inputs[26])){
-        isLayerNormalizationEnabled = true;
-    }
+    // if (!mModelInfo->isOperandDataNull(nnApiOp.inputs[23]) &&
+    //     !mModelInfo->isOperandDataNull(nnApiOp.inputs[24]) &&
+    //     !mModelInfo->isOperandDataNull(nnApiOp.inputs[25]) &&
+    //     !mModelInfo->isOperandDataNull(nnApiOp.inputs[26])){
+    //     isLayerNormalizationEnabled = true;
+    // }
 
     auto createNode = [&](Operation op, uint32_t index) -> std::shared_ptr<ngraph::Node> {
         auto inputIndex = op.inputs[index];
@@ -300,27 +287,13 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     float m_clip = 0.f, p_clip = 0.f;
     bool input_forget = false;
     std::shared_ptr<ngraph::Node> lstmNode;
-    std::string activationName;
 
     auto activationVals = mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 20);
 
-        if(activationVals == 0){
-            activationName = ""; //TODO: how to handle none
-        } else if(activationVals == 1){
-            activationName = "relu";
-        } else if(activationVals == 3){
-            activationName = "relu6";
-        } else if(activationVals == 4){
-            activationName = "tanh";
-        } else if(activationVals == 6){
-            activationName = "sigmoid";
-        }
+    auto dimVal = mModelInfo->getOperand(19);
+    hidden_size = dimVal.dimensions[1];
 
-    // TODO: calculate properly, changed compile now, but check at runtime
-    hidden_size = (std::size_t)&initial_hidden_state->get_shape()[1];
-    ALOGD("size of initial_hidden_state is %d", &initial_hidden_state->get_shape()[1]);
-
-    m_clip = (float) mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 21); //TODO: change to float
+    m_clip = mModelInfo->ParseOperationInput<float>(nnApiOp, 21);
 
     ALOGD("========> Creating CIFG inputWeight node");
     inputWeight = createNode(nnApiOp, 1);
@@ -349,15 +322,15 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     ALOGD("========> Creating outputBias node");
     outputBias = createNode(nnApiOp, 15);
 
-    weightsVector.push_back(inputWeight);
-    weightsVector.push_back(forgetWeight);
-    weightsVector.push_back(cellWeight);
-    weightsVector.push_back(outputWeight);
+    weightsVector.push_back(ngraph::builder::transpose(inputWeight));
+    weightsVector.push_back(ngraph::builder::transpose(forgetWeight));
+    weightsVector.push_back(ngraph::builder::transpose(cellWeight));
+    weightsVector.push_back(ngraph::builder::transpose(outputWeight));
 
-    reccurentVector.push_back(recurrentInputWeight);
-    reccurentVector.push_back(recurrentForgetWeight);
-    reccurentVector.push_back(recurrentCellWeight);
-    reccurentVector.push_back(recurrentOutputWeight);
+    reccurentVector.push_back(ngraph::builder::transpose(recurrentInputWeight));
+    reccurentVector.push_back(ngraph::builder::transpose(recurrentForgetWeight));
+    reccurentVector.push_back(ngraph::builder::transpose(recurrentCellWeight));
+    reccurentVector.push_back(ngraph::builder::transpose(recurrentOutputWeight));
 
     biasVector.push_back(inputBias);
     biasVector.push_back(forgetBias);
@@ -367,9 +340,8 @@ bool LSTM::createNode(const Operation& nnApiOp) {
         input_forget = true;
     }
 
-    weightsNode = std::make_shared<ngraph::opset3::Concat>(weightsVector, concat_axis);
-    ALOGD("size of concatinated weights is %d", &weightsNode->get_shape()[0]);
-    recurrenceWeightNode = std::make_shared<ngraph::opset3::Concat>(reccurentVector, concat_axis);
+    weightsNode = std::make_shared<ngraph::opset3::Concat>(weightsVector, 1);
+    recurrenceWeightNode = std::make_shared<ngraph::opset3::Concat>(reccurentVector, 1);
     biasNode = std::make_shared<ngraph::opset3::Concat>(biasVector, concat_axis);
 
     // TODO: how to implement projection and normalization and handle output
@@ -379,22 +351,33 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     B = biasNode;
     
     if(isPeepholeOptimizationEnabled){
-        ALOGD("========> Creating Peephole pInputWeight node");
-        pInputWeight = createNode(nnApiOp, 9);
-        ALOGD("========> Creating Peephole pForgetWeight node");
-        pForgetWeight = createNode(nnApiOp, 10);
-        ALOGD("========> Creating Peephole pOutputWeight node");
-        pOutputWeight = createNode(nnApiOp, 11);
+        auto piwd = mModelInfo->getOperand(9);
+        auto pfwd = mModelInfo->getOperand(10);
+        auto powd = mModelInfo->getOperand(11);
+        if(piwd.dimensions[0] == 0 || pfwd.dimensions[0] == 0 || powd.dimensions[0] == 0) {
+            ngraph::Shape peepholeshape = ngraph::Shape(3*hidden_size);
+            auto defaultPeepholeop = std::make_shared<ngraph::opset3::Constant>((inputNode != nullptr) ? inputNode->get_element_type() :inputTempNode.get_element_type(), ngraph::Shape{3 * hidden_size}, std::vector<float>{0.f});
+            P = defaultPeepholeop;
+        } else{
+            ALOGD("========> Creating Peephole pInputWeight node");
+            pInputWeight = createNode(nnApiOp, 9);
+            ALOGD("========> Creating Peephole pForgetWeight node");
+            pForgetWeight = createNode(nnApiOp, 10);
+            ALOGD("========> Creating Peephole pOutputWeight node");
+            pOutputWeight = createNode(nnApiOp, 11);
 
-        peepholeVector.push_back(pInputWeight);
-        peepholeVector.push_back(pForgetWeight);
-        peepholeVector.push_back(pOutputWeight);
+            peepholeVector.push_back(pInputWeight);
+            peepholeVector.push_back(pForgetWeight);
+            peepholeVector.push_back(pOutputWeight);
 
-        peepholeNode = std::make_shared<ngraph::opset3::Concat>(weightsVector, concat_axis);
-        P = peepholeNode;
+            peepholeNode = std::make_shared<ngraph::opset3::Concat>(weightsVector, concat_axis);
+
+            P = peepholeNode;
+        }
+        
     } else {
         ngraph::Shape peepholeshape = ngraph::Shape(3*hidden_size);
-        auto defaultPeepholeop = std::make_shared<ngraph::opset3::Constant>((inputNode != nullptr) ? inputNode->get_element_type() : inputTempNode.get_element_type(), peepholeshape, std::vector<float>{0.f});
+        auto defaultPeepholeop = std::make_shared<ngraph::opset3::Constant>((inputNode != nullptr) ? inputNode->get_element_type() : inputTempNode.get_element_type(),  ngraph::Shape{3 * hidden_size}, std::vector<float>{0.f});
         P = defaultPeepholeop;
     }
 
@@ -404,9 +387,9 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     const auto& p_f = p_iof.at(2);
 
     // Xt*(W^T) -- for [iofc] gates.
-    auto Xt_W = make_shared<ngraph::op::Dot>((inputNode != nullptr) ? inputNode : inputTempNode, ngraph::builder::transpose(W));
+    auto Xt_W = make_shared<ngraph::op::Dot>((inputNode != nullptr) ? inputNode : inputTempNode, W);
     // Ht-1*(R^T)  -- for [iofc] gates.
-    auto Ht_R = make_shared<ngraph::op::Dot>(initial_hidden_state, ngraph::builder::transpose(R));
+    auto Ht_R = make_shared<ngraph::op::Dot>(initial_hidden_state, R);
     // Xt*(W^T) + Ht-1*(R^T) + Wb + Rb  -- for [iofc] gates.
     auto gates = add(Xt_W, add(Ht_R, B));
 
@@ -439,7 +422,7 @@ bool LSTM::createNode(const Operation& nnApiOp) {
 
     // auto projection_weights1 = createNode(nnApiOp, 16);   
     // auto projection_bias1 = createNode(nnApiOp, 17);   
-    // p_clip = (float) mModelInfo->ParseOperationInput<uint32_t>(nnApiOp, 22); //TODO: change back to float
+    // p_clip = mModelInfo->ParseOperationInput<float>(nnApiOp, 22); 
 
     // if(isRecurrentProjectionLayer) {
     //     auto projWeightsProduct = make_shared<ngraph::op::Dot>(projection_weights1, mul(o_t, handleFusion(clip(C, m_clip), activationVals)));
@@ -453,20 +436,13 @@ bool LSTM::createNode(const Operation& nnApiOp) {
     // ot (.) h(Ct)
     auto H = mul(o_t, handleFusion(clip(C, m_clip), activationVals)); // h_t 
 
-    std::vector<std::shared_ptr<ngraph::Node>> scratchBuffVector;
+    std::shared_ptr<ngraph::Node> scratchBuffNode;
 
-    if(isCIFGEnabled){
-        scratchBuffVector.push_back(f_t);
-        scratchBuffVector.push_back(C);
-        scratchBuffVector.push_back(o_t);
+    if (isCIFGEnabled) {
+        scratchBuffNode = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{3 * hidden_size}, std::vector<float>{0.f});
     } else {
-        scratchBuffVector.push_back(i_t);
-        scratchBuffVector.push_back(f_t);
-        scratchBuffVector.push_back(C);
-        scratchBuffVector.push_back(o_t);
+        scratchBuffNode = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{4 * hidden_size}, std::vector<float>{0.f});
     }
-
-    auto scratchBuffNode = std::make_shared<ngraph::opset3::Concat>(scratchBuffVector, concat_axis);
 
     auto scratchBuffNodeOutputName = scratchBuffNode->outputs()[0].get_node()->get_friendly_name();
     auto hOutputName = H->outputs()[0].get_node()->get_friendly_name();
@@ -525,6 +501,9 @@ std::shared_ptr<ngraph::Node> LSTM::mul(const ngraph::Output<ngraph::Node>& lhs,
 }
 
 std::shared_ptr<ngraph::Node> LSTM::clip(const ngraph::Output<ngraph::Node>& data, float m_clip) const {
+    if (m_clip == 0.f) {
+        return data.as_single_output_node();
+    }
     return make_shared<ngraph::op::Clamp>(data, -m_clip, m_clip);
 }
 std::shared_ptr<ngraph::Node> LSTM::handleFusion(const std::shared_ptr<ngraph::Node>& arg, int activationVals) const {
