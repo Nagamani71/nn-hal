@@ -283,8 +283,8 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
         std::shared_ptr<ngraph::Node> projection_bias;
         const auto& projBiasDims = getInputOperandDimensions(17);
         float p_clip;
-        if (!projWeightsDims.empty()) {
-            if (projWeightsDims[0] != 0) {
+        if (!projBiasDims.empty()) {
+            if (projBiasDims[0] != 0) {
                 projection_bias = getInputNode<float>(17);
             } else {
                 projection_bias = std::make_shared<ngraph::opset3::Constant>(
@@ -300,7 +300,7 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
             projection_weights,
             mul(o_t, applyActivation(clip(C, cell_state_clipping), activationFn)), false, true);
         // clip(W_{proj}(o_t odot g(C_t))+b_{proj}, t_{proj})
-        H = clip(add(projWeightsProduct, projection_bias), p_clip);  // h_t
+        H = clip(add(transpose(CH_HC, projWeightsProduct), projection_bias), p_clip);  // h_t
     } else {
         // ot (.) h(Ct)
         H = mul(o_t, applyActivation(clip(C, cell_state_clipping), activationFn));  // h_t
