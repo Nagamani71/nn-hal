@@ -178,10 +178,10 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
 
     // Create weight, reccurence and bias tensors W, R, B
     ALOGI("creating W ");
-    auto W = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{ngraph::builder::transpose(input2input_weights), ngraph::builder::transpose(input2forget_weights), ngraph::builder::transpose(input2cell_weights), ngraph::builder::transpose(input2output_weights)}, 1);
+    auto W = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{transpose(CH_HC, input2input_weights), transpose(CH_HC, input2forget_weights), transpose(CH_HC, input2cell_weights), transpose(CH_HC, input2output_weights)}, 1);
     ALOGI("creating R ");
-    auto R = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{ngraph::builder::transpose(recurrent2input_weights), ngraph::builder::transpose(recurrent2forget_weights), ngraph::builder::transpose(recurrent2cell_weights), ngraph::builder::transpose(recurrent2output_weights)}, 1);
-    ALOGI("creating wb ");
+    auto R = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{transpose(CH_HC, recurrent2input_weights), transpose(CH_HC, recurrent2forget_weights), transpose(CH_HC, recurrent2cell_weights), transpose(CH_HC, recurrent2output_weights)}, 1);
+    ALOGI("creating B ");
     auto B = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{input_gate_bias, forget_gate_bias, cell_bias, output_gate_bias}, 0); // TODO: check bias if any error in output
     // auto wb = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{input_gate_bias, forget_gate_bias, cell_bias, output_gate_bias}, 0); // TODO: check bias if any error in output
     // ALOGI("creating rb ");
@@ -189,7 +189,9 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
     // ALOGI("creating B ");
     // auto B = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{wb, rb}, 0); // TODO: check bias if any error in output
 
+
     std::shared_ptr<ngraph::Node> P; // for peephole
+    std::shared_ptr<ngraph::Node> cell2input_weights, cell2forget_weights, cell2output_weights;
 
     if (isPeepholeUsed) {
         ALOGI("creating P ");
@@ -199,14 +201,17 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
         if( c2iDimensions[0] == 0 || c2fDimensions[0] == 0 || c2oDimensions[0] == 0 ) {
             ALOGI("creating default P "); 
             // Create default peephole 
-            ngraph::Shape peepholeshape = ngraph::Shape(3*hidden_size);
-            auto defaultPeepholeop = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{3 * hidden_size}, std::vector<float>{0.f});
-            P = defaultPeepholeop;
+            // ngraph::Shape peepholeshape = ngraph::Shape(3*hidden_size);
+            // auto defaultPeepholeop = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{3 * hidden_size}, std::vector<float>{0.f});
+            // P = defaultPeepholeop;
+            cell2input_weights = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{hidden_size}, std::vector<float>{0.f});
+            cell2forget_weights = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{hidden_size}, std::vector<float>{0.f});
+            cell2output_weights = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{hidden_size}, std::vector<float>{0.f});
         } else {
             // optional peephole parameters W_{ci}, W_{cf}, W_{co}
-            auto cell2input_weights = getInputNode<float>(9);
-            auto cell2forget_weights = getInputNode<float>(10);
-            auto cell2output_weights = getInputNode<float>(11);
+            cell2input_weights = getInputNode<float>(9);
+            cell2forget_weights = getInputNode<float>(10);
+            cell2output_weights = getInputNode<float>(11);
             P = make_shared<ngraph::opset3::Concat>(ngraph::NodeVector{cell2input_weights, cell2forget_weights, cell2output_weights}, 0);
         }
         
@@ -224,45 +229,48 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
 
     std::shared_ptr<ngraph::Node> scratchBuffer;
 
-    ALOGI("splitting P ");
-    ngraph::NodeVector p_iof = ngraph::builder::split(P, 3);
-    const auto& p_i = p_iof.at(0);
-    const auto& p_o = p_iof.at(1);
-    const auto& p_f = p_iof.at(2);
+    // ALOGI("splitting P ");
+    auto axisNode= ngraph::op::Constant::create(ngraph::element::u64,
+                                       ngraph::Shape{},
+                                       {1});
+    // auto p_iof = std::make_shared<ngraph::opset3::Split>(P, axisNode, 3);
+    // const auto p_i = p_iof->output(0);
+    // const auto p_o = p_iof->output(1);
+    // const auto p_f = p_iof->output(2);
 
     ALOGI("creating default Xt*(W^T) ");
     // Xt*(W^T) -- for [iofc] gates.
-    auto Xt_W = std::make_shared<ngraph::op::Dot>(inputNode, W);
+    auto Xt_W = matMul(inputNode, W, false, false);
     ALOGI("creating default Ht_R ");
     // Ht-1*(R^T)  -- for [iofc] gates.
-    auto Ht_R = std::make_shared<ngraph::op::Dot>(initial_hidden_state, R);
+    auto Ht_R = matMul(initial_hidden_state, R, false, false);
     ALOGI("creating gates ");
     // Xt*(W^T) + Ht-1*(R^T) + Wb + Rb  -- for [iofc] gates.
     auto gates = add(Xt_W, add(Ht_R, B));
 
-    ngraph::NodeVector split_gates = ngraph::builder::split(gates, 4, -1);
+    auto split_gates = std::make_shared<ngraph::opset3::Split>(gates, axisNode, 4);
 
-    auto i_t = split_gates.at(0);
-    auto f_t = split_gates.at(1);
-    auto c_t = split_gates.at(2);
-    auto o_t = split_gates.at(3);
+    auto i_t = split_gates->output(0);
+    auto f_t = split_gates->output(1);
+    auto c_t = split_gates->output(2);
+    auto o_t = split_gates->output(3);
 
     ALOGI("creating i_t ");
     // f(Xt*(Wi^T) + Ht-1*(Ri^T) + Pi (.) Ct-1 + Wbi + Rbi)
-    i_t = applyActivation(clip(add(i_t, mul(p_i, initial_cell_state)), cell_state_clipping), 6); 
+    i_t = applyActivation(clip(add(i_t, mul(cell2input_weights, initial_cell_state)), cell_state_clipping), 6); 
 
     if (isCIFGenabled) {
         ALOGI("CIFG enabled, creating f_t ");
         // Couple input with forget gate: 1 - i_t
-        f_t = sub(ngraph::op::Constant::create(i_t->get_element_type(),
-                                       i_t->get_shape(),
-                                       std::vector<float>(shape_size(i_t->get_shape()), 1.f)),
+        f_t = sub(ngraph::op::Constant::create(i_t.get_element_type(),
+                                       i_t.get_shape(),
+                                       std::vector<float>(shape_size(i_t.get_shape()), 1.f)),
                   i_t);
         scratchBuffer = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{1, 3 * hidden_size}, std::vector<float>{0.f});
     } else {
         ALOGI("CIFG disable, creating f_t ");
         // f(Xt*(Wf^T) + Ht-1*(Rf^T) + Pf (.) Ct-1 + Wbf + Rbf)
-        f_t = applyActivation(clip(add(f_t, mul(p_f, initial_cell_state)), cell_state_clipping), 6);
+        f_t = applyActivation(clip(add(f_t, mul(cell2forget_weights, initial_cell_state)), cell_state_clipping), 6);
         scratchBuffer = std::make_shared<ngraph::opset3::Constant>(inputNode->get_element_type(), ngraph::Shape{1, 4 * hidden_size}, std::vector<float>{0.f});
     }
 
@@ -271,47 +279,52 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
     auto C = add(mul(f_t, initial_cell_state), mul(i_t, applyActivation(clip(c_t, cell_state_clipping), activationFn))); // C_t
     ALOGI("creating o_t ");
     // f(Xt*(Wo^T) + Ht-1*(Ro^T) + Po (.) Ct + Wbo + Rbo)
-    o_t = applyActivation(clip(add(o_t, mul(p_o, C)), cell_state_clipping), 6); // o_t
+    o_t = applyActivation(clip(add(o_t, mul(cell2output_weights, C)), cell_state_clipping), 6); // o_t
 
     ALOGI("creating H ");
     // ot (.) h(Ct)
     auto H = mul(o_t, applyActivation(clip(C, cell_state_clipping), activationFn)); // h_t 
 
     std::vector<std::shared_ptr<ngraph::Node>> LstmOutputs(4, nullptr);
-    LstmOutputs[0] = scratchBuffer;
-    LstmOutputs[1] = H;
+    LstmOutputs[0] = H;
+    LstmOutputs[1] = C;
     LstmOutputs[2] = C;
-    LstmOutputs[3] = o_t;
-    for(int i = 0; i < 4; i++) {
+
+    // eleminating scratchBuffer, otherwise its crashing loadNetwork()
+    for(int i = 1; i < 4; i++) {
         auto outputIndex = sModelInfo->getOperationOutput(mNnapiOperationIndex, i);
-        mNgraphNodes->setOutputAtOperandIndex(outputIndex, LstmOutputs[i]);
+        mNgraphNodes->setOutputAtOperandIndex(outputIndex, LstmOutputs[i-1]);
         const auto op = sModelInfo->getOperand(outputIndex);
         if (op.lifetime == OperandLifeTime::MODEL_OUTPUT) {
-            addResultNode(outputIndex, LstmOutputs[i]);
+            addResultNode(outputIndex, LstmOutputs[i-1]);
         }
     }
+    auto outputIndex = sModelInfo->getOperationOutput(mNnapiOperationIndex, 0);
+    addResultNode(outputIndex, H);
     return scratchBuffer;
 }
 
 std::shared_ptr<ngraph::Node> LSTM::add(const ngraph::Output<ngraph::Node>& lhs, const ngraph::Output<ngraph::Node>& rhs) {
-    return {make_shared<ngraph::op::Add>(lhs, rhs, ngraph::op::AutoBroadcastSpec(ngraph::op::AutoBroadcastType::NUMPY))};
+    return {make_shared<ngraph::opset3::Add>(lhs, rhs, ngraph::op::AutoBroadcastType::NUMPY)};
 }
 
 std::shared_ptr<ngraph::Node> LSTM::sub(const ngraph::Output<ngraph::Node>& lhs, const ngraph::Output<ngraph::Node>& rhs) {
-    return {
-        make_shared<ngraph::op::Subtract>(lhs, rhs, ngraph::op::AutoBroadcastSpec(ngraph::op::AutoBroadcastType::NUMPY))};
+    return {make_shared<ngraph::opset3::Add>(lhs, rhs, ngraph::op::AutoBroadcastType::NUMPY)};
 }
 
 std::shared_ptr<ngraph::Node> LSTM::mul(const ngraph::Output<ngraph::Node>& lhs, const ngraph::Output<ngraph::Node>& rhs) {
-    return {
-        make_shared<ngraph::op::Multiply>(lhs, rhs, ngraph::op::AutoBroadcastSpec(ngraph::op::AutoBroadcastType::NUMPY))};
+    return {make_shared<ngraph::opset3::Multiply>(lhs, rhs, ngraph::op::AutoBroadcastType::NUMPY)};
+}
+
+std::shared_ptr<ngraph::Node> LSTM::matMul(const ngraph::Output<ngraph::Node>& lhs, const ngraph::Output<ngraph::Node>& rhs, bool transpose_lhs, bool transpose_rhs) {
+    return {make_shared<ngraph::opset3::MatMul>(lhs, rhs, transpose_lhs, transpose_rhs)};
 }
 
 std::shared_ptr<ngraph::Node> LSTM::clip(const ngraph::Output<ngraph::Node>& data, float m_clip) const {
     if (m_clip == 0.f) {
         return data.as_single_output_node();
     }
-    return make_shared<ngraph::op::Clamp>(data, -m_clip, m_clip);
+    return make_shared<ngraph::opset3::Clamp>(data, -m_clip, m_clip);
 }
 std::shared_ptr<ngraph::Node> LSTM::applyActivation(const std::shared_ptr<ngraph::Node>& arg, int activationFn) const {
     switch(activationFn){

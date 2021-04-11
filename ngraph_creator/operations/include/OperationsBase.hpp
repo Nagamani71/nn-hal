@@ -18,7 +18,7 @@ namespace nnhal {
 
 class OperationsBase {
 protected:
-    enum ConversionType { NHWC_NCHW, NCHW_NHWC, IHWO_OIHW, OHWI_OIHW, NHC_NCH, NCH_NHC };
+    enum ConversionType { NHWC_NCHW, NCHW_NHWC, IHWO_OIHW, OHWI_OIHW, NHC_NCH, NCH_NHC, CH_HC, HC_CH };
     uint32_t mDefaultOutputIndex;
     int mNnapiOperationIndex;
     std::shared_ptr<ngraph::Node> transpose(ConversionType type,
