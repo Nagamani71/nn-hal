@@ -5,9 +5,9 @@
 #include <log/log.h>
 #include <NgraphHelper.hpp>
 #include <NgraphNodes.hpp>
+#include <ngraph/builder/split.hpp>
 #include <ngraph/ngraph.hpp>
 #include <ngraph/opsets/opset3.hpp>
-#include <ngraph/builder/split.hpp>
 
 #include "ModelManager.h"
 
@@ -18,7 +18,16 @@ namespace nnhal {
 
 class OperationsBase {
 protected:
-    enum ConversionType { NHWC_NCHW, NCHW_NHWC, IHWO_OIHW, OHWI_OIHW, NHC_NCH, NCH_NHC, CH_HC, HC_CH };
+    enum ConversionType {
+        NHWC_NCHW,
+        NCHW_NHWC,
+        IHWO_OIHW,
+        OHWI_OIHW,
+        NHC_NCH,
+        NCH_NHC,
+        CH_HC,
+        HC_CH
+    };
     uint32_t mDefaultOutputIndex;
     int mNnapiOperationIndex;
     std::shared_ptr<ngraph::Node> transpose(ConversionType type,

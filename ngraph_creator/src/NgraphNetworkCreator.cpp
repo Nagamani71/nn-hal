@@ -32,23 +32,32 @@ bool NgraphNetworkCreator::createInputParams() {
     for (auto i : mModelInfo->getModelInputIndexes()) {
         std::shared_ptr<ngraph::opset3::Parameter> inputParam;
         auto& nnapiOperand = mModelInfo->getOperand(i);
+        android::hardware::hidl_vec<unsigned int>;
         auto& dims = nnapiOperand.dimensions;
         ALOGI("createInputParams operand %d dims.size(%d)", i, dims.size());
-        if(dims[0] != 0){
-            switch (nnapiOperand.type) {
-                case OperandType::FLOAT32:
-                case OperandType::TENSOR_FLOAT32:
+        if (dims.size() > 0) {
+            if (dims[0] != 0) {
+                switch (nnapiOperand.type) {
+                    case OperandType::FLOAT32:
+                    case OperandType::TENSOR_FLOAT32:
                         inputParam = std::make_shared<ngraph::opset3::Parameter>(
                             ngraph::element::f32, ngraph::Shape(dims.begin(), dims.end()));
-                        ALOGV("createInputParams created inputIndex %d, type %d", i, nnapiOperand.type);
-                    break;
-                default:
-                    ALOGE("createInputParams Failure at inputIndex %d, type %d", i, nnapiOperand.type);
-                    inputParam = nullptr;
-                    return false;
+                        ALOGV("createInputParams created inputIndex %d, type %d", i,
+                              nnapiOperand.type);
+                        break;
+                    default:
+                        ALOGE("createInputParams Failure at inputIndex %d, type %d", i,
+                              nnapiOperand.type);
+                        inputParam = nullptr;
+                        return false;
+                }
+                mNgraphNodes->addInputParam(inputParam);
+                mNgraphNodes->setOutputAtOperandIndex(i, inputParam);
+            } else {
+                mNgraphNodes->setNullPtr(i);
             }
-            mNgraphNodes->addInputParam(inputParam);
-            mNgraphNodes->setOutputAtOperandIndex(i, inputParam);
+        } else {
+            mNgraphNodes->setNullPtr(i);
         }
     }
     return true;

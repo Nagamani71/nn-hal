@@ -43,7 +43,7 @@ bool CpuPreparedModel::initialize(const Model& model) {
     testfn.push_back(ngraph_function);
 
     ALOGI("before visualize tree");
-    ngraph::pass::VisualizeTree("/data/vendor/neuralnetworks/after.png").run_on_module(testfn); 
+    ngraph::pass::VisualizeTree("/data/vendor/neuralnetworks/after.png").run_on_module(testfn);
     ALOGI("after visualize tree");
 
     if (ngraph_function == nullptr) {
@@ -51,7 +51,7 @@ bool CpuPreparedModel::initialize(const Model& model) {
         return false;
     }
     std::shared_ptr<InferenceEngine::CNNNetwork> ngraph_net;
-    try{
+    try {
         ALOGI("setting ngraph_net");
         ngraph_net = std::make_shared<InferenceEngine::CNNNetwork>(ngraph_function);
         // ALOGI("serializing ngraph_net");
