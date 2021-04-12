@@ -43,7 +43,6 @@ const std::string& NgraphNodes::getNodeName(size_t index) {
 }
 
 std::shared_ptr<ngraph::Function> NgraphNodes::generateGraph() {
-    ALOGD("mResultNodes size %d , mInputParams size %d ", mResultNodes.size(), mInputParams.size());
     return std::make_shared<ngraph::Function>(mResultNodes, mInputParams);
 }
 

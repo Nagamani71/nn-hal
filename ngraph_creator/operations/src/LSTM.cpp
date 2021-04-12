@@ -307,21 +307,24 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
     }
 
     std::vector<std::shared_ptr<ngraph::Node>> LstmOutputs(4, nullptr);
-    LstmOutputs[0] = H;
-    LstmOutputs[1] = C;
-    LstmOutputs[2] = o_t.get_node_shared_ptr();
+    LstmOutputs[0] = scratchBuffer;
+    LstmOutputs[1] = H;
+    LstmOutputs[2] = C;
+    LstmOutputs[3] = o_t.get_node_shared_ptr();
 
     // eleminating scratchBuffer, otherwise its crashing loadNetwork()
-    for (int i = 1; i < 4; i++) {
+    for (int i = 0; i < 4; i++) {
         auto outputIndex = sModelInfo->getOperationOutput(mNnapiOperationIndex, i);
-        mNgraphNodes->setOutputAtOperandIndex(outputIndex, LstmOutputs[i - 1]);
-        const auto op = sModelInfo->getOperand(outputIndex);
-        if (op.lifetime == OperandLifeTime::MODEL_OUTPUT) {
-            addResultNode(outputIndex, LstmOutputs[i - 1]);
+        if (i == 0)
+            mNgraphNodes->setNullPtr(outputIndex);
+        else {
+            mNgraphNodes->setOutputAtOperandIndex(outputIndex, LstmOutputs[i]);
+            const auto op = sModelInfo->getOperand(outputIndex);
+            if (op.lifetime == OperandLifeTime::MODEL_OUTPUT) {
+                addResultNode(outputIndex, LstmOutputs[i]);
+            }
         }
     }
-    auto outputIndex = sModelInfo->getOperationOutput(mNnapiOperationIndex, 0);
-    addResultNode(outputIndex, H);
     return scratchBuffer;
 }
 

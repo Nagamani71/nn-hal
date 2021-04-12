@@ -117,12 +117,7 @@ void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedMod
         }
         ALOGD("Input index: %d layername : %s", inIndex, inputNodeName.c_str());
         std::shared_ptr<InferenceEngine::TBlob<float>> destBlob;
-        try {
-            destBlob = plugin->getBlob(inputNodeName);
-        } catch (const std::exception& ex) {
-            ALOGE("%s Exception !!! %s", __func__, ex.what());
-            // return false;
-        }
+        destBlob = plugin->getBlob(inputNodeName);
 
         uint8_t* dest = destBlob->buffer().as<uint8_t*>();
         uint8_t* src = srcBlob->buffer().as<uint8_t*>();
@@ -132,14 +127,17 @@ void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedMod
     ALOGD("Run");
 
     plugin->infer();
-    // TODO: change back to i=0
-    for (size_t i = 1; i < request.outputs.size(); i++) {
+
+    for (size_t i = 0; i < request.outputs.size(); i++) {
         ALOGD("asyncExecute i is %d", i);
         auto outIndex = modelInfo->getModelOutputIndex(i);
         ALOGI("OutputIndex: %d", outIndex);
         void* destPtr = modelInfo->getBlobFromMemoryPoolOut(request, i);
 
         const std::string& outputNodeName = ngraphNw->getNodeName(outIndex);
+        if (outputNodeName == "") {
+            continue;
+        }
         ALOGD("Output index: %d layername : %s", outIndex, outputNodeName.c_str());
         auto srcBlob = plugin->getBlob(outputNodeName);
         std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(), srcBlob->byteSize());
@@ -191,12 +189,7 @@ static std::tuple<ErrorStatus, hidl_vec<V1_2::OutputShape>, Timing> executeSynch
         }
         ALOGD("Input index: %d layername : %s", inIndex, inputNodeName.c_str());
         std::shared_ptr<InferenceEngine::TBlob<float>> destBlob;
-        try {
-            destBlob = plugin->getBlob(inputNodeName);
-        } catch (const std::exception& ex) {
-            ALOGE("%s Exception !!! %s", __func__, ex.what());
-            // return false;
-        }
+        destBlob = plugin->getBlob(inputNodeName);
 
         uint8_t* dest = destBlob->buffer().as<uint8_t*>();
         uint8_t* src = srcBlob->buffer().as<uint8_t*>();
@@ -207,13 +200,16 @@ static std::tuple<ErrorStatus, hidl_vec<V1_2::OutputShape>, Timing> executeSynch
     ALOGD("Run");
 
     plugin->infer();
-    // TODO: change back to i=0
-    for (size_t i = 1; i < request.outputs.size(); i++) {
+
+    for (size_t i = 0; i < request.outputs.size(); i++) {
         auto outIndex = modelInfo->getModelOutputIndex(i);
         ALOGI("OutputIndex: %d", outIndex);
         void* destPtr = modelInfo->getBlobFromMemoryPoolOut(request, i);
 
         const std::string& outputNodeName = ngraphNw->getNodeName(outIndex);
+        if (outputNodeName == "") {
+            continue;
+        }
         ALOGD("Output index: %d layername : %s", outIndex, outputNodeName.c_str());
         auto srcBlob = plugin->getBlob(outputNodeName);
         std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(), srcBlob->byteSize());
