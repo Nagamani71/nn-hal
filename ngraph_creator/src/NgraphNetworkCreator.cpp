@@ -32,7 +32,6 @@ bool NgraphNetworkCreator::createInputParams() {
     for (auto i : mModelInfo->getModelInputIndexes()) {
         std::shared_ptr<ngraph::opset3::Parameter> inputParam;
         auto& nnapiOperand = mModelInfo->getOperand(i);
-        android::hardware::hidl_vec<unsigned int>;
         auto& dims = nnapiOperand.dimensions;
         ALOGI("createInputParams operand %d dims.size(%d)", i, dims.size());
         if (dims.size() > 0) {
