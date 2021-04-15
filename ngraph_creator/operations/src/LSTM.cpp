@@ -172,13 +172,13 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
     // Create weight, reccurence and bias tensors W, R, B
     auto W = make_shared<ngraph::opset3::Concat>(
         ngraph::NodeVector{
-            transpose(CH_HC, input2input_weights), transpose(CH_HC, input2forget_weights),
-            transpose(CH_HC, input2cell_weights), transpose(CH_HC, input2output_weights)},
+            transpose(NC_CN, input2input_weights), transpose(NC_CN, input2forget_weights),
+            transpose(NC_CN, input2cell_weights), transpose(NC_CN, input2output_weights)},
         1);
     auto R = make_shared<ngraph::opset3::Concat>(
         ngraph::NodeVector{
-            transpose(CH_HC, recurrent2input_weights), transpose(CH_HC, recurrent2forget_weights),
-            transpose(CH_HC, recurrent2cell_weights), transpose(CH_HC, recurrent2output_weights)},
+            transpose(NC_CN, recurrent2input_weights), transpose(NC_CN, recurrent2forget_weights),
+            transpose(NC_CN, recurrent2cell_weights), transpose(NC_CN, recurrent2output_weights)},
         1);
     auto B = make_shared<ngraph::opset3::Concat>(
         ngraph::NodeVector{input_gate_bias, forget_gate_bias, cell_bias, output_gate_bias}, 0);
@@ -300,7 +300,7 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
             projection_weights,
             mul(o_t, applyActivation(clip(C, cell_state_clipping), activationFn)), false, true);
         // clip(W_{proj}(o_t odot g(C_t))+b_{proj}, t_{proj})
-        H = clip(add(transpose(CH_HC, projWeightsProduct), projection_bias), p_clip);  // h_t
+        H = clip(add(transpose(NC_CN, projWeightsProduct), projection_bias), p_clip);  // h_t
     } else {
         // ot (.) h(Ct)
         H = mul(o_t, applyActivation(clip(C, cell_state_clipping), activationFn));  // h_t

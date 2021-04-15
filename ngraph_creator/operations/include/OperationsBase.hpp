@@ -24,8 +24,8 @@ protected:
         OHWI_OIHW,
         NHC_NCH,
         NCH_NHC,
-        CH_HC,
-        HC_CH
+        NC_CN,
+        CN_NC
     };
     uint32_t mDefaultOutputIndex;
     int mNnapiOperationIndex;

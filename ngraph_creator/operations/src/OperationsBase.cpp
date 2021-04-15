@@ -31,10 +31,10 @@ std::shared_ptr<ngraph::Node> OperationsBase::transpose(ConversionType type,
         case NCH_NHC:
             order = {0, 1, 2};
             break;
-        case CH_HC:
+        case NC_CN:
             order = {1, 0};
             break;
-        case HC_CH:
+        case CN_NC:
             order = {0, 1};
             break;
     }
