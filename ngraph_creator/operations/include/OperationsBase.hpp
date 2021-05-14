@@ -51,6 +51,14 @@ protected:
             return mNgraphNodes->getOperationOutput(operandIndex).get_node_shared_ptr();
     }
 
+    void removeInputParameter(uint32_t inputIndex) {
+        auto operandIndex = sModelInfo->getOperationInput(mNnapiOperationIndex, inputIndex);
+        auto node = mNgraphNodes->getOperationOutput(operandIndex).get_node_shared_ptr();
+        auto nodeName = mNgraphNodes->getNodeName(operandIndex);
+        ALOGD("nodename is %s ", nodeName.c_str());
+        mNgraphNodes->removeInputParameter(nodeName, operandIndex);
+    }
+
 public:
     static std::shared_ptr<NnapiModelInfo> sModelInfo;
     static std::shared_ptr<NgraphNodes> mNgraphNodes;

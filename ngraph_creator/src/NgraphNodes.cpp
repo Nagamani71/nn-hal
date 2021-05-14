@@ -42,6 +42,19 @@ const std::string& NgraphNodes::getNodeName(size_t index) {
     return mNodeNames[index];
 }
 
+const void NgraphNodes::removeInputParameter(std::string name, size_t index) {
+    for (int i = 0; i < mInputParams.size(); i++) {
+        ALOGD("i %d and node name is %s", i, mInputParams[i]->get_name().c_str());
+        if (name.compare(mInputParams[i]->get_name()) == 0) {
+            mInputParams.erase(mInputParams.begin() + i);
+            setInvalidNode(index);
+        }
+    }
+    // auto nodeName = getNodeName(index);
+    // mInputParams.erase(std::remove(mInputParams.begin(), mInputParams.end(), nodeName),
+    // mInputParams.end());
+}
+
 std::shared_ptr<ngraph::Function> NgraphNodes::generateGraph() {
     return std::make_shared<ngraph::Function>(mResultNodes, mInputParams);
 }
