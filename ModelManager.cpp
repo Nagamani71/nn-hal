@@ -218,7 +218,7 @@ Blob::Ptr NnapiModelInfo::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const ui
             }
         }
     } else if (op.type == OperandType::TENSOR_INT32 || op.type == OperandType::INT32) {
-        ALOGV("check if const tensors of type IN32 supported");
+        ALOGD("check if const tensors of type IN32 supported");
         InferenceEngine::TensorDesc td(InferenceEngine::Precision::I32, toDims(op.dimensions),
                                        InferenceEngine::Layout::ANY);
         if (buf == nullptr) {
