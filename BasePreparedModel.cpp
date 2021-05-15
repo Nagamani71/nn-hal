@@ -91,6 +91,20 @@ Return<ErrorStatus> executeBase(const Request& request, MeasureTiming measure,
     return ErrorStatus::NONE;
 }
 
+static void floatToBool(const float* src, uint8_t* dst, size_t size) {
+      for (uint32_t i = 0; i < size; ++i) {
+        dst[i] = static_cast<uint8_t>(src[i]);
+        ALOGD("%s input: %f output: %d ", __func__, src[i], dst[i]);
+      }
+}
+
+static void floatToInt(const float* src, int32_t* dst, size_t size) {
+    for (uint32_t i = 0; i < size; ++i) {
+        dst[i] = static_cast<int32_t>(src[i]);
+        ALOGD("%s input: %f output: %d ", __func__, src[i], dst[i]);
+      }
+}
+
 template <typename T_IExecutionCallback>
 void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedModel* preparedModel,
                   time_point driverStart, const sp<T_IExecutionCallback>& callback) {
@@ -143,11 +157,32 @@ void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedMod
         }
         ALOGD("Output index: %d layername : %s", outIndex, outputNodeName.c_str());
         auto srcBlob = plugin->getBlob(outputNodeName);
+        auto operandType = modelInfo->getOperandType(outIndex);
+        switch (operandType)
+        {
+        case OperandType::TENSOR_FLOAT32: {
+            ALOGD("mani----working float32");
+            std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(), srcBlob->byteSize());
+            break;
+        }
+        case OperandType::TENSOR_BOOL8: {
+            ALOGD("mani----working bool8");
+            floatToBool(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr, srcBlob->size());
+            break;
+        }
+        case OperandType::TENSOR_INT32: {
+            ALOGD("mani----working int32");
+            floatToInt(srcBlob->buffer().as<float*>(), (int32_t*)destPtr, srcBlob->size());
+            break;
+        }
+        default:
+            ALOGD("mani----Not working");
+            break;
+        }
         auto nelem = (srcBlob->size() > 20 ? 20 : srcBlob->size());
         for (int i = 0; i < nelem; i++) {
             ALOGD("outBlob elements float %d = %f", i, srcBlob->readOnly()[i]);
         }
-        std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(), srcBlob->byteSize());
         writeBufferToFile(outputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
     }
 
@@ -223,11 +258,33 @@ static std::tuple<ErrorStatus, hidl_vec<V1_2::OutputShape>, Timing> executeSynch
         }
         ALOGD("Output index: %d layername : %s", outIndex, outputNodeName.c_str());
         auto srcBlob = plugin->getBlob(outputNodeName);
+        auto operandType = modelInfo->getOperandType(outIndex);
+        switch (operandType)
+        {
+        case OperandType::TENSOR_FLOAT32: {
+            ALOGD("mani----working float32");
+            std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(), srcBlob->byteSize());
+            break;
+        }
+        case OperandType::TENSOR_BOOL8: {
+            ALOGD("mani----working bool8");
+            floatToBool(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr, srcBlob->size());
+            break;
+        }
+        case OperandType::TENSOR_INT32: {
+            ALOGD("mani----working int32");
+            floatToInt(srcBlob->buffer().as<float*>(), (int32_t*)destPtr, srcBlob->size());
+            break;
+        }
+        default:
+            ALOGD("mani----Not working");
+            break;
+        }
         auto nelem = (srcBlob->size() > 20 ? 20 : srcBlob->size());
         for (int i = 0; i < nelem; i++) {
-            ALOGD("outBlob elements float %d = %f", i, srcBlob->readOnly()[i]);
+            ALOGD("outBlob elements float %d = %d", i, srcBlob->readOnly()[i]);
         }
-        std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(), srcBlob->byteSize());
+        
         writeBufferToFile(outputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
     }
 
