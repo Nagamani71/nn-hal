@@ -120,6 +120,10 @@ void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedMod
         uint8_t* src = srcBlob->buffer().as<uint8_t*>();
         std::memcpy(dest, src, srcBlob->byteSize());
         writeBufferToFile(inputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
+        auto nelem = (destBlob->size() > 20 ? 20 : destBlob->size());
+        for (int i = 0; i < nelem; i++) {
+            ALOGD("input destBlob elements %d = %f", i, destBlob->readOnly()[i]);
+        }
     }
     ALOGD("Run");
 
@@ -139,6 +143,10 @@ void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedMod
         }
         ALOGD("Output index: %d layername : %s", outIndex, outputNodeName.c_str());
         auto srcBlob = plugin->getBlob(outputNodeName);
+        auto nelem = (srcBlob->size() > 20 ? 20 : srcBlob->size());
+        for (int i = 0; i < nelem; i++) {
+            ALOGD("outBlob elements float %d = %f", i, srcBlob->readOnly()[i]);
+        }
         std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(), srcBlob->byteSize());
         writeBufferToFile(outputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
     }
@@ -191,6 +199,10 @@ static std::tuple<ErrorStatus, hidl_vec<V1_2::OutputShape>, Timing> executeSynch
         uint8_t* src = srcBlob->buffer().as<uint8_t*>();
         std::memcpy(dest, src, srcBlob->byteSize());
         writeBufferToFile(inputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
+        auto nelem = (destBlob->size() > 20 ? 20 : destBlob->size());
+        for (int i = 0; i < nelem; i++) {
+            ALOGD("input destBlob elements %d = %f", i, destBlob->readOnly()[i]);
+        }
     }
 
     ALOGD("Run");
@@ -211,6 +223,10 @@ static std::tuple<ErrorStatus, hidl_vec<V1_2::OutputShape>, Timing> executeSynch
         }
         ALOGD("Output index: %d layername : %s", outIndex, outputNodeName.c_str());
         auto srcBlob = plugin->getBlob(outputNodeName);
+        auto nelem = (srcBlob->size() > 20 ? 20 : srcBlob->size());
+        for (int i = 0; i < nelem; i++) {
+            ALOGD("outBlob elements float %d = %f", i, srcBlob->readOnly()[i]);
+        }
         std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(), srcBlob->byteSize());
         writeBufferToFile(outputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
     }

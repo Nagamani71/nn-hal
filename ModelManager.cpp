@@ -233,7 +233,7 @@ Blob::Ptr NnapiModelInfo::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const ui
             return blob;
         }
     } else if (op.type == OperandType::TENSOR_BOOL8 || op.type == OperandType::BOOL) {
-        ALOGV("check if const tensors of type BOOL supported");
+        ALOGD("check if const tensors of type BOOL supported");
         // nnAssert(true);
         InferenceEngine::TensorDesc td(InferenceEngine::Precision::BOOL, toDims(op.dimensions),
                                        InferenceEngine::Layout::ANY);

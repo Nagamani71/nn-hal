@@ -56,9 +56,14 @@ std::shared_ptr<ngraph::Node> Split::createNode() {
 
     for (int i = 0; i < numSplits; i++) {
         auto outputIndex = sModelInfo->getOperationOutput(mNnapiOperationIndex, i);
+        std::shared_ptr<ngraph::Node> outNode;
         // TODO: remove this dummy convert
-        auto outNode =
+        if (checkInputOperandType(0, (int32_t)OperandType::TENSOR_FLOAT32))
+        outNode =
             std::make_shared<ngraph::opset3::Convert>(outputNode[i], ngraph::element::f32);
+        if (checkInputOperandType(0, (int32_t)OperandType::TENSOR_INT32))
+        outNode =
+            std::make_shared<ngraph::opset3::Convert>(outputNode[i], ngraph::element::i32);
         mNgraphNodes->setOutputAtOperandIndex(outputIndex, outNode);
         const auto op = sModelInfo->getOperand(outputIndex);
         if (op.lifetime == OperandLifeTime::MODEL_OUTPUT) {
