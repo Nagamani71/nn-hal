@@ -64,6 +64,10 @@ public:
             return true;
         return false;
     }
+    bool isOperandLifeTimeInput(uint32_t operandIdx) {
+        if (getOperandLifetime(operandIdx) == OperandLifeTime::MODEL_INPUT) return true;
+        return false;
+    }
 
     template <typename T>
     T GetConstOperand(uint32_t index) {

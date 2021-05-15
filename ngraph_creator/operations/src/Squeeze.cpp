@@ -18,6 +18,13 @@ bool Squeeze::validate() {
 
     if (!checkInputOperandType(1, (int32_t)OperandType::TENSOR_INT32)) return false;
 
+    // TODO: Add Support for all_tensors_as_inputs
+    if (!sModelInfo->isOmittedInput(mNnapiOperationIndex, 1) &&
+        sModelInfo->isOperandLifeTimeInput(sModelInfo->getOperationInput(mNnapiOperationIndex, 1))) {
+        ALOGE("%s Tensor as Input is not supported", __func__);
+        return false;
+    }
+
     return true;
 }
 
