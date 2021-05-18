@@ -41,8 +41,15 @@ bool CpuPreparedModel::initialize(const Model& model) {
     }
     try {
         auto ngraph_net = std::make_shared<InferenceEngine::CNNNetwork>(ngraph_function);
-        ngraph_net->serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
-                              "/data/vendor/neuralnetworks/ngraph_ir.bin");
+        // const auto parameters = ngraph_net->getFunction()->get_parameters();
+        // InferenceEngine::ICNNNetwork::InputShapes shapes = ngraph_net->getInputShapes();
+        // for (const auto & parameter : parameters) {
+        //     if (parameter->get_partial_shape().is_dynamic()) {
+                
+        //     }
+        // }
+        // ngraph_net->serialize("/data/vendor/neuralnetworks/ngraph_ir.xml",
+        //                       "/data/vendor/neuralnetworks/ngraph_ir.bin");
         mPlugin = std::make_shared<IENetwork>(ngraph_net);
         mPlugin->loadNetwork();
     } catch (const std::exception& ex) {

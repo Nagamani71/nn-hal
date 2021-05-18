@@ -295,39 +295,71 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
         output_layer_norm_weights = getInputNode<float>(26);
 
         const auto& elementType = inputNode->get_element_type();
-        auto reduceAxes = ngraph::op::Constant::create(ngraph::element::i32, ngraph::Shape{}, {0});
+        auto reduceAxes = ngraph::op::Constant::create(ngraph::element::i64, ngraph::Shape{}, {0});
+
+
+        // auto shape = f_t->get_shape();
+        // int64_t n_axis = 1 >= 0 ? 1 : shape.size() + 1;
+
+        // // Get input data
+        // // auto data = input_value(0);
+
+        // // Compute mean
+        // std::vector<size_t> post_reduction_axes(shape.size() - n_axis);
+        // std::iota(post_reduction_axes.begin(), post_reduction_axes.end(), n_axis);
+
+        // for(int i=0; i<post_reduction_axes.size(); i++)
+        //     ALOGD("MANI_____%d", post_reduction_axes[i]);
+
+        // auto reduceAxes = ngraph::op::Constant::create(
+        //             ngraph::element::i64, ngraph::Shape{post_reduction_axes.size()}, {0});
 
         std::shared_ptr<ngraph::Node> i_t_Mean, i_t_Variance, f_t_Mean, f_t_Variance, c_t_Mean,
             c_t_Variance, o_t_Mean, o_t_Variance;
 
         if (!isCIFGenabled) {
+            ALOGD("calculating mean for i_t");
             i_t_Mean = std::make_shared<ngraph::opset3::ReduceMean>(i_t, reduceAxes, false);
+            // i_t_Mean = mean(i_t, reduceAxes, false);
+            ALOGD("calculated mean for i_t");
             i_t_Variance = calculateVariance(i_t, i_t_Mean, reduceAxes, elementType);
         }
+        ALOGD("calculating mean for f_t");
         f_t_Mean = std::make_shared<ngraph::opset3::ReduceMean>(f_t, reduceAxes, false);
+        // f_t_Mean = mean(f_t, reduceAxes, false);
+        ALOGD("calculated mean for f_t");
         f_t_Variance = calculateVariance(f_t, f_t_Mean, reduceAxes, elementType);
 
         c_t_Mean = std::make_shared<ngraph::opset3::ReduceMean>(c_t, reduceAxes, false);
+        // c_t_Mean = mean(c_t, reduceAxes, false);
         c_t_Variance = calculateVariance(c_t, c_t_Mean, reduceAxes, elementType);
 
         o_t_Mean = std::make_shared<ngraph::opset3::ReduceMean>(o_t, reduceAxes, false);
+        // o_t_Mean = mean(o_t, reduceAxes, false);
         o_t_Variance = calculateVariance(o_t, o_t_Mean, reduceAxes, elementType);
 
         double normalizationConstant = 1e-8f;
         std::shared_ptr<ngraph::Node> batchNorm_i_t, batchNorm_f_t, batchNorm_c_t, batchNorm_o_t;
 
         if (!isCIFGenabled)
-            batchNorm_i_t = std::make_shared<ngraph::opset3::BatchNormInference>(
-                i_t, input_layer_norm_weights, input_gate_bias, i_t_Mean, i_t_Variance,
-                normalizationConstant);
-        batchNorm_f_t = std::make_shared<ngraph::opset3::BatchNormInference>(
-            f_t, forget_layer_norm_weights, forget_gate_bias, f_t_Mean, f_t_Variance,
-            normalizationConstant);
-        batchNorm_c_t = std::make_shared<ngraph::opset3::BatchNormInference>(
-            c_t, cell_layer_norm_weights, cell_bias, c_t_Mean, c_t_Variance, normalizationConstant);
-        batchNorm_o_t = std::make_shared<ngraph::opset3::BatchNormInference>(
-            o_t, output_layer_norm_weights, output_gate_bias, o_t_Mean, o_t_Variance,
-            normalizationConstant);
+            batchNorm_i_t = normalizaation(i_t, input_layer_norm_weights, input_gate_bias, i_t_Mean, i_t_Variance);
+            // batchNorm_i_t = std::make_shared<ngraph::opset3::BatchNormInference>(
+            //     i_t, input_layer_norm_weights, input_gate_bias, i_t_Mean, i_t_Variance,
+            //     normalizationConstant);
+        batchNorm_f_t = normalizaation(
+            f_t, forget_layer_norm_weights, forget_gate_bias, f_t_Mean, f_t_Variance);
+        batchNorm_c_t = normalizaation(
+            c_t, cell_layer_norm_weights, cell_bias, c_t_Mean, c_t_Variance);
+        batchNorm_o_t = normalizaation(
+            o_t, output_layer_norm_weights, output_gate_bias, o_t_Mean, o_t_Variance);
+        // batchNorm_f_t = std::make_shared<ngraph::opset3::BatchNormInference>(
+        //     f_t, forget_layer_norm_weights, forget_gate_bias, f_t_Mean, f_t_Variance,
+        //     normalizationConstant);
+        // batchNorm_c_t = std::make_shared<ngraph::opset3::BatchNormInference>(
+        //     c_t, cell_layer_norm_weights, cell_bias, c_t_Mean, c_t_Variance, normalizationConstant);
+        // batchNorm_o_t = std::make_shared<ngraph::opset3::BatchNormInference>(
+        //     o_t, output_layer_norm_weights, output_gate_bias, o_t_Mean, o_t_Variance,
+        //     normalizationConstant);
 
         if (!isCIFGenabled) i_t = batchNorm_i_t;
         f_t = batchNorm_f_t;
@@ -360,9 +392,6 @@ std::shared_ptr<ngraph::Node> LSTM::createNode() {
             inputNode->get_element_type(), ngraph::Shape{1, 4 * output_size},
             std::vector<float>{0.f});
     }
-    // i_t = applyActivation(
-    //         clip(i_t, cell_state_clipping),
-    //         ACTIVATION_FUNCTION_SIGMOID);
 
     // ft (.) Ct-1 + it (.) ct
     auto C = add(mul(f_t, initial_cell_state),
@@ -489,6 +518,42 @@ bool LSTM::isValidInputTensor(uint32_t inputIndex) {
     if (dims[0] == 0) return false;
 
     return true;
+}
+
+std::shared_ptr<ngraph::Node> LSTM::mean(const ngraph::Output<ngraph::Node>& value,
+                                                    const std::shared_ptr<ngraph::Node>& reduction_axes,
+                                                    bool keep_dims)
+{
+    std::shared_ptr<ngraph::Node> elems_number;
+    const auto value_elem_type = value.get_element_type();
+    const auto value_elems_sum =
+        std::make_shared<ngraph::opset3::ReduceSum>(value, reduction_axes, keep_dims);
+    elems_number = get_num_elements(value, reduction_axes);
+    elems_number = std::make_shared<ngraph::opset3::Convert>(elems_number, value_elem_type);
+
+    return std::make_shared<ngraph::opset3::Divide>(value_elems_sum, elems_number);
+}
+
+std::shared_ptr<ngraph::Node> LSTM::normalizaation(std::shared_ptr<ngraph::Node> input,
+        std::shared_ptr<ngraph::Node> scaling, std::shared_ptr<ngraph::Node> bias,
+        std::shared_ptr<ngraph::Node> mean, std::shared_ptr<ngraph::Node> variance) {
+    float epsilon = 1e-8f;
+    const auto& input_type = input->get_element_type();
+    auto espNode = ngraph::op::Constant::create(input_type, ngraph::Shape{}, {epsilon});
+
+    // (x_i - mean_i)
+    auto input_sub_mean = std::make_shared<ngraph::opset3::Subtract>(input, mean);
+    // sqrt(var_i + epsilon)
+    auto sqrt_var_add_esp = std::make_shared<ngraph::opset3::Sqrt>(add(variance, espNode));
+    //  auto sqrt_var_add_esp = std::make_shared<ngraph::opset3::Sqrt>(variance);
+    // x_i_normalized = (x_i - mean_i) / sqrt(var_i + epsilon)
+    auto input_normalized = std::make_shared<ngraph::opset3::Divide>(input_sub_mean, sqrt_var_add_esp);
+    // x_i_normalized * gamma
+    auto input_normalized_scaling = std::make_shared<ngraph::opset3::Multiply>(input_normalized, scaling);
+    // output_i = x_i_normalized * gamma + beta
+    auto output = add(input_normalized_scaling, bias);
+
+    return output;
 }
 
 }  // namespace nnhal
