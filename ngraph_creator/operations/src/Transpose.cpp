@@ -26,8 +26,9 @@ bool Transpose::validate() {
 
     // TODO: Add Support for all_tensors_as_inputs
     const auto& dims = getInputOperandDimensions(1);
-    if (!dims.empty() && dims[0] != 0 && 
-        sModelInfo->isOperandLifeTimeInput(sModelInfo->getOperationInput(mNnapiOperationIndex, 1))) {
+    if (!dims.empty() && dims[0] != 0 &&
+        !sModelInfo->isOperandLifeTimeConst(
+            sModelInfo->getOperationInput(mNnapiOperationIndex, 1))) {
         ALOGE("%s Tensor as Input is not supported", __func__);
         return false;
     }

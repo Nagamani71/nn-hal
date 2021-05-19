@@ -36,11 +36,13 @@ public:
     std::shared_ptr<ngraph::Node> createConstNode(const ngraph::element::Type& elementType,
                                                   const ngraph::Shape& shape);
     std::shared_ptr<ngraph::Node> mean(const ngraph::Output<ngraph::Node>& value,
-                                                    const std::shared_ptr<ngraph::Node>& reduction_axes,
-                                                    bool keep_dims);
+                                       const std::shared_ptr<ngraph::Node>& reduction_axes,
+                                       bool keep_dims);
     std::shared_ptr<ngraph::Node> normalizaation(std::shared_ptr<ngraph::Node> input,
-        std::shared_ptr<ngraph::Node> scaling, std::shared_ptr<ngraph::Node> bias,
-        std::shared_ptr<ngraph::Node> mean, std::shared_ptr<ngraph::Node> variance);
+                                                 std::shared_ptr<ngraph::Node> scaling,
+                                                 std::shared_ptr<ngraph::Node> bias,
+                                                 std::shared_ptr<ngraph::Node> mean,
+                                                 std::shared_ptr<ngraph::Node> variance);
 
     bool isValidInputTensor(uint32_t inputIndex);
 };

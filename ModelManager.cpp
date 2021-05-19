@@ -191,18 +191,19 @@ Blob::Ptr NnapiModelInfo::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const ui
             ALOGD("Create output blob !!!!");
             vec<unsigned int> order;
             InferenceEngine::Layout layout;
-            if (op.dimensions.size() == 4) {
-                layout = InferenceEngine::Layout::NHWC;
-            } else if (op.dimensions.size() == 2) {
-                layout = InferenceEngine::Layout::NC;
-            } else if (op.dimensions.size() == 3) {
-                layout = InferenceEngine::Layout::CHW;
-                ALOGI("Anoob : GetInOutOperandAsBlob output already transposed to NHWC");
-            } else if (op.dimensions.size() == 1) {
-                layout = InferenceEngine::Layout::C;
-            } else {
-                layout = InferenceEngine::Layout::ANY;
-            }
+            // if (op.dimensions.size() == 4) {
+            //     layout = InferenceEngine::Layout::NHWC;
+            // } else if (op.dimensions.size() == 2) {
+            //     layout = InferenceEngine::Layout::NC;
+            // } else if (op.dimensions.size() == 3) {
+            //     layout = InferenceEngine::Layout::CHW;
+            //     ALOGI("Anoob : GetInOutOperandAsBlob output already transposed to NHWC");
+            // } else if (op.dimensions.size() == 1) {
+            //     layout = InferenceEngine::Layout::C;
+            // } else {
+            //     layout = InferenceEngine::Layout::ANY;
+            // }
+            layout = InferenceEngine::Layout::ANY;
             InferenceEngine::TensorDesc td(InferenceEngine::Precision::FP32, toDims(op.dimensions),
                                            layout);  // nhwc
             if (buf == nullptr) {
