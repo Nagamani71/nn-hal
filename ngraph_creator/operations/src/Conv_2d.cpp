@@ -113,15 +113,15 @@ std::shared_ptr<ngraph::Node> Conv_2d::createNode() {
     }
 
     if (isExplicit) {
-        padding_left = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 3);
-        padding_right = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 4);
-        padding_top = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 5);
-        padding_bottom = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 6);
+        padding_left = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 3);
+        padding_right = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 4);
+        padding_top = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 5);
+        padding_bottom = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 6);
 
-        stride_width = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 7);
-        stride_height = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 8);
+        stride_width = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 7);
+        stride_height = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 8);
 
-        activationFn = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 9);
+        activationFn = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 9);
 
         if (inputsSize >= 10 && inputsSize <= 13) {
             for (int i = 10; i < inputsSize; i++) {
@@ -151,12 +151,12 @@ std::shared_ptr<ngraph::Node> Conv_2d::createNode() {
     }
 
     if (isImplicit) {
-        padding_scheme = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 3);
+        padding_scheme = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 3);
 
-        stride_width = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 4);
-        stride_height = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 5);
+        stride_width = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 4);
+        stride_height = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 5);
 
-        activationFn = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 6);
+        activationFn = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 6);
 
         if (inputsSize >= 7 && inputsSize <= 10) {
             for (int i = 7; i < inputsSize; i++) {

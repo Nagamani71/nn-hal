@@ -30,8 +30,10 @@ bool Depthwise_Conv_2d::validate() {
     }
 
     const auto& filterDimensions = getInputOperandDimensions(1);
-    if (filterDimensions[0] != 1)
+    if (filterDimensions[0] != 1) {
         ALOGE("%s Invalid dimension at filter[0] (%d)", __func__, filterDimensions[0]);
+        return false;
+    }
 
     const auto& inputsSize = sModelInfo->getOperationInputsSize(mNnapiOperationIndex);
     bool isImplicit = false, isExplicit = false;
@@ -43,8 +45,6 @@ bool Depthwise_Conv_2d::validate() {
         for (counter = 3; counter < 11; counter++) {
             if (!checkInputOperandType(counter, (int32_t)OperandType::INT32)) return false;
         }
-
-        ALOGD("counter is %d ", counter);
 
         if (counter != inputsSize) {
             for (counter = 11; counter < inputsSize; counter++) {
@@ -61,8 +61,6 @@ bool Depthwise_Conv_2d::validate() {
         for (counter = 3; counter < 8; counter++) {
             if (!checkInputOperandType(counter, (int32_t)OperandType::INT32)) return false;
         }
-
-        ALOGD("counter is %d ", counter);
 
         if (counter != inputsSize) {
             for (counter = 8; counter < inputsSize; counter++) {
