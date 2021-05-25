@@ -28,7 +28,7 @@ bool Conv_2d::validate() {
         ALOGE("%s Invalid dimensions size for input(%d) or filter(%d)", __func__,
               inputDimensionsSize, filterDimensionsSize);
         return false;
-    }
+    } 
 
     const auto& inputsSize = sModelInfo->getOperationInputsSize(mNnapiOperationIndex);
 
