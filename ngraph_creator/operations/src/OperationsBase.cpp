@@ -112,7 +112,9 @@ std::shared_ptr<ngraph::Node> OperationsBase::QuantizeNode(std::shared_ptr<ngrap
     auto minVal = ngraph::op::Constant::create(intElementType, ngraph::Shape{}, {0});
     auto maxVal = ngraph::op::Constant::create(intElementType, ngraph::Shape{}, {255});
 
-    auto div = std::make_shared<ngraph::opset3::Divide>(input, scale);
+    // TODO:Add check for input type adn convert
+    auto convertInput = std::make_shared<ngraph::opset3::Convert>(input, floatElementType);
+    auto div = std::make_shared<ngraph::opset3::Divide>(convertInput, scale);
     ngraph::op::v5::Round::RoundMode mode = ngraph::op::v5::Round::RoundMode::HALF_TO_EVEN;
     auto round = std::make_shared<ngraph::op::v5::Round>(div, mode);
     auto convertRound = std::make_shared<ngraph::opset3::Convert>(round, ngraph::element::i32);
@@ -138,6 +140,7 @@ std::shared_ptr<ngraph::Node> OperationsBase::DequantizeNode(std::shared_ptr<ngr
     auto zeroPoint =
         ngraph::op::Constant::create(intElementType, ngraph::Shape{}, {inputZeroPoint});
 
+    // TODO:Add check for input type adn convert
     auto convertInput = std::make_shared<ngraph::opset3::Convert>(input, intElementType);
     auto diff = std::make_shared<ngraph::opset3::Subtract>(convertInput, zeroPoint);
     auto convertDiff = std::make_shared<ngraph::opset3::Convert>(diff, floatElementType);
