@@ -58,6 +58,10 @@ protected:
         auto nodeName = mNgraphNodes->getNodeName(operandIndex);
         mNgraphNodes->removeInputParameter(nodeName, operandIndex);
     }
+    std::shared_ptr<ngraph::Node> QuantizeNode(std::shared_ptr<ngraph::Node> input, size_t index,
+                                               ngraph::element::Type quantizeType);
+    std::shared_ptr<ngraph::Node> DequantizeNode(std::shared_ptr<ngraph::Node> input, size_t index,
+                                                 ngraph::element::Type dequantizeType);
 
 public:
     static std::shared_ptr<NnapiModelInfo> sModelInfo;
