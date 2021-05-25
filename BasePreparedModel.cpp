@@ -133,7 +133,7 @@ void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedMod
         uint8_t* dest = destBlob->buffer().as<uint8_t*>();
         uint8_t* src = srcBlob->buffer().as<uint8_t*>();
         std::memcpy(dest, src, srcBlob->byteSize());
-        writeBufferToFile(inputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
+        // writeBufferToFile(inputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
     }
     ALOGD("Run");
 
@@ -178,7 +178,7 @@ void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedMod
                             srcBlob->byteSize());
                 break;
         }
-        writeBufferToFile(outputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
+        // writeBufferToFile(outputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
     }
 
     if (!modelInfo->updateRequestPoolInfos()) {
@@ -228,7 +228,7 @@ static std::tuple<ErrorStatus, hidl_vec<V1_2::OutputShape>, Timing> executeSynch
         uint8_t* dest = destBlob->buffer().as<uint8_t*>();
         uint8_t* src = srcBlob->buffer().as<uint8_t*>();
         std::memcpy(dest, src, srcBlob->byteSize());
-        writeBufferToFile(inputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
+        // writeBufferToFile(inputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
     }
 
     ALOGD("Run");
@@ -274,7 +274,7 @@ static std::tuple<ErrorStatus, hidl_vec<V1_2::OutputShape>, Timing> executeSynch
                             srcBlob->byteSize());
                 break;
         }
-        writeBufferToFile(outputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
+        // writeBufferToFile(outputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
     }
 
     if (!modelInfo->updateRequestPoolInfos()) {
