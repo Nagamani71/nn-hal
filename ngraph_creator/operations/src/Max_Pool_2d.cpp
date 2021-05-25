@@ -177,14 +177,10 @@ std::shared_ptr<ngraph::Node> Max_Pool_2d::createNode() {
     kernel = {(size_t)filter_width, (size_t)filter_height};
     pads_begin = {(size_t)padding_left, (size_t)padding_top};
     pads_end = {(size_t)padding_right, (size_t)padding_bottom};
-    
+
     auto maxpoolNode = std::make_shared<ngraph::opset3::MaxPool>(
-                    inputNode, ngraph::Strides(strides),
-                    ngraph::Shape(pads_begin),
-                    ngraph::Shape(pads_end), 
-                    ngraph::Shape(kernel),
-                    ngraph::op::RoundingType::FLOOR,
-                    auto_pad);
+        inputNode, ngraph::Strides(strides), ngraph::Shape(pads_begin), ngraph::Shape(pads_end),
+        ngraph::Shape(kernel), ngraph::op::RoundingType::FLOOR, auto_pad);
 
     auto outputNode = applyActivation(maxpoolNode, activationFn);
 

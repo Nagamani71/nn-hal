@@ -98,6 +98,13 @@ static void floatToUint8(const float* src, uint8_t* dst, size_t size) {
     }
 }
 
+static void floatToint8(const float* src, int8_t* dst, size_t size) {
+    for (uint32_t i = 0; i < size; ++i) {
+        dst[i] = static_cast<int8_t>(src[i]);
+        ALOGV("%s input: %f output: %d ", __func__, src[i], dst[i]);
+    }
+}
+
 template <typename T_IExecutionCallback>
 void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedModel* preparedModel,
                   time_point driverStart, const sp<T_IExecutionCallback>& callback) {
@@ -156,6 +163,14 @@ void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedMod
             }
             case OperandType::TENSOR_BOOL8: {
                 floatToUint8(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr, srcBlob->size());
+                break;
+            }
+            case OperandType::TENSOR_QUANT8_ASYMM: {
+                floatToUint8(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr, srcBlob->size());
+                break;
+            }
+            case OperandType::TENSOR_QUANT8_SYMM: {
+                floatToint8(srcBlob->buffer().as<float*>(), (int8_t*)destPtr, srcBlob->size());
                 break;
             }
             default:
@@ -244,6 +259,14 @@ static std::tuple<ErrorStatus, hidl_vec<V1_2::OutputShape>, Timing> executeSynch
             }
             case OperandType::TENSOR_BOOL8: {
                 floatToUint8(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr, srcBlob->size());
+                break;
+            }
+            case OperandType::TENSOR_QUANT8_ASYMM: {
+                floatToUint8(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr, srcBlob->size());
+                break;
+            }
+            case OperandType::TENSOR_QUANT8_SYMM: {
+                floatToint8(srcBlob->buffer().as<float*>(), (int8_t*)destPtr, srcBlob->size());
                 break;
             }
             default:
