@@ -22,6 +22,7 @@
 #include <Logical_Or.hpp>
 #include <Logistic.hpp>
 #include <Maximum.hpp>
+#include <Max_Pool_2d.hpp>
 #include <Mean.hpp>
 #include <Minimum.hpp>
 #include <Mul.hpp>
