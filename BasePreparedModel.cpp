@@ -157,6 +157,7 @@ void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedMod
         uint32_t rActualLength = 0;
         void* destPtr = modelInfo->getBlobFromMemoryPoolOut(request, i, rActualLength);
         auto outDims = srcBlob->getTensorDesc().getDims();
+        // TODO: remove these logs
         ALOGD(" rActualLength %d, expectedLength %d", rActualLength, expectedLength);
         if (operandType == OperandType::TENSOR_BOOL8 ||
             operandType == OperandType::TENSOR_QUANT8_ASYMM ||
@@ -272,6 +273,7 @@ static std::tuple<ErrorStatus, hidl_vec<V1_2::OutputShape>, Timing> executeSynch
         uint32_t rActualLength = 0;
         void* destPtr = modelInfo->getBlobFromMemoryPoolOut(request, i, rActualLength);
         auto outDims = srcBlob->getTensorDesc().getDims();
+        // TODO: remove these logs
         ALOGD(" rActualLength %d, expectedLength %d", rActualLength, expectedLength);
         if (operandType == OperandType::TENSOR_BOOL8 ||
             operandType == OperandType::TENSOR_QUANT8_ASYMM ||
