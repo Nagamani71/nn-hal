@@ -13,14 +13,20 @@ Conv_2d::Conv_2d(int operationIndex) : OperationsBase(operationIndex) {
 
 bool Conv_2d::validate() {
     // Check Output type
-    if (!checkOutputOperandType(0, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+    if (!checkOutputOperandType(0, (int32_t)OperandType::TENSOR_FLOAT32) &&
+        !checkOutputOperandType(0, (int32_t)OperandType::TENSOR_QUANT8_ASYMM))
+        return false;
 
     for (int i = 0; i < 2; i++) {
-        // Check input/filter operands(0/1) are of type TENSOR_FLOAT32
-        if (!checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+        // Check input/filter operands(0/1) are of type TENSOR_FLOAT32/TENSOR_QUANT8_ASYMM
+        if (!checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT32) &&
+            !checkInputOperandType(i, (int32_t)OperandType::TENSOR_QUANT8_ASYMM))
+            return false;
     }
     // Check bias type
-    if (!checkInputOperandType(2, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
+    if (!checkInputOperandType(2, (int32_t)OperandType::TENSOR_FLOAT32) &&
+        !checkInputOperandType(2, (int32_t)OperandType::TENSOR_INT32))
+        return false;
     // Check Input, Filter Dimension size
     const auto& inputDimensionsSize = getInputOperandDimensions(0).size();
     const auto& filterDimensionsSize = getInputOperandDimensions(1).size();
@@ -28,7 +34,7 @@ bool Conv_2d::validate() {
         ALOGE("%s Invalid dimensions size for input(%d) or filter(%d)", __func__,
               inputDimensionsSize, filterDimensionsSize);
         return false;
-    } 
+    }
 
     const auto& inputsSize = sModelInfo->getOperationInputsSize(mNnapiOperationIndex);
 
@@ -219,11 +225,9 @@ std::shared_ptr<ngraph::Node> Conv_2d::createNode() {
         filterNode = getInputNode<uint8_t>(1);
         biasNode = getInputNode<int>(2);
 
-        inputNode = DequantizeNode(inputNode, inputIndex, ngraph::element::i32);
-        filterNode = DequantizeNode(filterNode, filterIndex, ngraph::element::i32);
-        // biasNode = QuantizeNode(biasNode, biasIndex, ngraph::element::u8);
-        biasNode = DequantizeNode(biasNode, biasIndex, ngraph::element::i32);
-        // biasNode = std::make_shared<ngraph::opset3::Convert>(biasNode, ngraph::element::i32);
+        inputNode = DequantizeNode(inputNode, inputIndex, ngraph::element::f32);
+        filterNode = DequantizeNode(filterNode, filterIndex, ngraph::element::f32);
+        biasNode = DequantizeNode(biasNode, biasIndex, ngraph::element::f32);
     }
 
     // OpenVino expects filter in OIHW format
