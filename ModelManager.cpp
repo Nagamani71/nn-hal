@@ -515,7 +515,8 @@ Blob::Ptr NnapiModelInfo::getBlobFromMemoryPoolIn(const Request& request, uint32
                                  operand.length);
 }
 
-void* NnapiModelInfo::getBlobFromMemoryPoolOut(const Request& request, uint32_t index, uint32_t& rBufferLength) {
+void* NnapiModelInfo::getBlobFromMemoryPoolOut(const Request& request, uint32_t index,
+                                               uint32_t& rBufferLength) {
     RunTimeOperandInfo& operand = mOperands[mModel.outputIndexes[index]];
     const V1_0::RequestArgument& arg = request.outputs[index];
     auto poolIndex = arg.location.poolIndex;
