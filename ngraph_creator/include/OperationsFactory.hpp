@@ -33,6 +33,7 @@
 #include <Quantize.hpp>
 #include <Reduce_All.hpp>
 #include <Reduce_Any.hpp>
+#include <Reduce_Max.hpp>
 #include <Reduce_Min.hpp>
 #include <Reduce_Prod.hpp>
 #include <Relu.hpp>
