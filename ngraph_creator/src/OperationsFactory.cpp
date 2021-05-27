@@ -107,6 +107,8 @@ std::shared_ptr<OperationsBase> OperationsFactory::getOperation(
             return std::make_shared<Softmax>(operationIndex);
         case OperationType::SQRT:
             return std::make_shared<SQRT>(operationIndex);
+        case OperationType::SELECT:
+            return std::make_shared<Select>(operationIndex);
         case OperationType::SIN:
             return std::make_shared<Sin>(operationIndex);
         case OperationType::SPLIT:
