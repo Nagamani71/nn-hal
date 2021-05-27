@@ -54,10 +54,15 @@ std::shared_ptr<ngraph::Node> Log_Softmax::createNode() {
     const auto axisNode =
         ngraph::opset3::Constant::create(ngraph::element::i64, ngraph::Shape{1}, {axis});
 
+    // logits * beta
     auto mul = std::make_shared<ngraph::opset3::Multiply>(input, betaNode);
+    // exp(logits * beta)
     auto exp = std::make_shared<ngraph::opset3::Exp>(mul);
+    // reduce_sum(exp(logits * beta), axis)
     auto sum = std::make_shared<ngraph::opset3::ReduceSum>(exp, axisNode, true);
+    // log(reduce_sum(exp(logits * beta), axis))
     auto log = std::make_shared<ngraph::opset3::Log>(sum);
+    // logits * beta - log(reduce_sum(exp(logits * beta), axis))
     auto sub = std::make_shared<ngraph::opset3::Subtract>(mul, log);
 
     const auto data_shape = std::make_shared<ngraph::opset3::ShapeOf>(input);
