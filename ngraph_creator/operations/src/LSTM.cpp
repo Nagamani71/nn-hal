@@ -470,13 +470,28 @@ std::shared_ptr<ngraph::Node> LSTM::get_num_elements(
 std::shared_ptr<ngraph::Node> LSTM::calculateVariance(
     const ngraph::Output<ngraph::Node>& input, const std::shared_ptr<ngraph::Node>& mean,
     const std::shared_ptr<ngraph::Node>& reduction_axes, const ngraph::element::Type& elementType) {
+    std::shared_ptr<ngraph::Node> mu = calculatemean(input, reduction_axes, false);
     ngraph::Output<ngraph::Node> diff = std::make_shared<ngraph::opset3::Subtract>(
-        input, mean, ngraph::op::AutoBroadcastType::NUMPY);
+        input, mu, ngraph::op::AutoBroadcastType::NUMPY);
     diff = std::make_shared<ngraph::opset3::ReduceSum>(
         std::make_shared<ngraph::opset3::Multiply>(diff, diff), reduction_axes, false);
     auto N = get_num_elements(input, reduction_axes);
     N = std::make_shared<ngraph::opset3::Convert>(N, elementType);
     return std::make_shared<ngraph::opset3::Divide>(diff, N, ngraph::op::AutoBroadcastType::NUMPY);
+}
+
+std::shared_ptr<ngraph::Node> LSTM::calculatemean(const ngraph::Output<ngraph::Node>& value,
+                                                    const std::shared_ptr<ngraph::Node>& reduction_axes,
+                                                    bool keep_dims) {
+    std::shared_ptr<ngraph::Node> elems_number;
+    const auto value_elem_type = value.get_element_type();
+    const auto value_elems_sum =
+        std::make_shared<ngraph::opset3::ReduceSum>(value, reduction_axes, keep_dims);
+    elems_number = get_num_elements(value, reduction_axes);
+    elems_number = std::make_shared<ngraph::opset3::Convert>(elems_number, value_elem_type);
+
+    return std::make_shared<ngraph::opset3::Divide>(value_elems_sum, elems_number)
+        ->add_provenance_group_members_above({value});
 }
 
 std::shared_ptr<ngraph::Node> LSTM::createConstNode(const ngraph::element::Type& elementType,
