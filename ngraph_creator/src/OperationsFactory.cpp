@@ -101,6 +101,8 @@ std::shared_ptr<OperationsBase> OperationsFactory::getOperation(
             return std::make_shared<Relu6>(operationIndex);
         case OperationType::RESHAPE:
             return std::make_shared<Reshape>(operationIndex);
+        case OperationType::RSQRT:
+            return std::make_shared<RSQRT>(operationIndex);
         case OperationType::SOFTMAX:
             return std::make_shared<Softmax>(operationIndex);
         case OperationType::SQRT:
