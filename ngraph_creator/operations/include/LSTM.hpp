@@ -35,6 +35,14 @@ public:
         const ngraph::element::Type& elementType);
     std::shared_ptr<ngraph::Node> createConstNode(const ngraph::element::Type& elementType,
                                                   const ngraph::Shape& shape);
+    std::shared_ptr<ngraph::Node> calculatemean(const ngraph::Output<ngraph::Node>& value,
+                                                const std::shared_ptr<ngraph::Node>& reduction_axes,
+                                                bool keep_dims);
+    std::shared_ptr<ngraph::Node> LayerNorm(const ngraph::Output<ngraph::Node>& input,
+                                            const std::shared_ptr<ngraph::Node>& mean,
+                                            const std::shared_ptr<ngraph::Node>& variance,
+                                            const std::shared_ptr<ngraph::Node>& normalizedweights,
+                                            const std::shared_ptr<ngraph::Node>& bias);
 
     bool isValidInputTensor(uint32_t inputIndex);
 };
