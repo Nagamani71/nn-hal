@@ -118,83 +118,86 @@ void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedMod
         notify(callback, ErrorStatus::GENERAL_FAILURE, {}, kNoTiming);
         return;
     }
+    try {
+        for (size_t i = 0; i < request.inputs.size(); i++) {
+            auto inIndex = modelInfo->getModelInputIndex(i);
+            auto srcBlob = modelInfo->getBlobFromMemoryPoolIn(request, i);
 
-    for (size_t i = 0; i < request.inputs.size(); i++) {
-        auto inIndex = modelInfo->getModelInputIndex(i);
-        auto srcBlob = modelInfo->getBlobFromMemoryPoolIn(request, i);
+            const std::string& inputNodeName = ngraphNw->getNodeName(inIndex);
+            if (inputNodeName == "") {
+                ALOGD("Ignorning input at index(%d), since it is invalid", inIndex);
+                continue;
+            }
+            ALOGD("Input index: %d layername : %s", inIndex, inputNodeName.c_str());
+            auto destBlob = plugin->getBlob(inputNodeName);
+            uint8_t* dest = destBlob->buffer().as<uint8_t*>();
+            uint8_t* src = srcBlob->buffer().as<uint8_t*>();
+            std::memcpy(dest, src, srcBlob->byteSize());
+        }
+        ALOGD("Run");
 
-        const std::string& inputNodeName = ngraphNw->getNodeName(inIndex);
-        if (inputNodeName == "") {
-            ALOGD("Ignorning input at index(%d), since it is invalid", inIndex);
-            continue;
-        }
-        ALOGD("Input index: %d layername : %s", inIndex, inputNodeName.c_str());
-        auto destBlob = plugin->getBlob(inputNodeName);
-        uint8_t* dest = destBlob->buffer().as<uint8_t*>();
-        uint8_t* src = srcBlob->buffer().as<uint8_t*>();
-        std::memcpy(dest, src, srcBlob->byteSize());
-        // writeBufferToFile(inputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
-    }
-    ALOGD("Run");
+        if (measure == MeasureTiming::YES) deviceStart = now();
+        plugin->infer();
+        if (measure == MeasureTiming::YES) deviceEnd = now();
 
-    if (measure == MeasureTiming::YES) deviceStart = now();
-    plugin->infer();
-    if (measure == MeasureTiming::YES) deviceEnd = now();
-
-    for (size_t i = 0; i < request.outputs.size(); i++) {
-        auto outIndex = modelInfo->getModelOutputIndex(i);
-        ALOGI("OutputIndex: %d", outIndex);
-        const std::string& outputNodeName = ngraphNw->getNodeName(outIndex);
-        if (outputNodeName == "") {
-            ALOGD("Ignorning output at index(%d), since it is invalid", outIndex);
-            continue;
+        for (size_t i = 0; i < request.outputs.size(); i++) {
+            auto outIndex = modelInfo->getModelOutputIndex(i);
+            ALOGI("OutputIndex: %d", outIndex);
+            const std::string& outputNodeName = ngraphNw->getNodeName(outIndex);
+            if (outputNodeName == "") {
+                ALOGD("Ignorning output at index(%d), since it is invalid", outIndex);
+                continue;
+            }
+            ALOGD("Output index: %d layername : %s", outIndex, outputNodeName.c_str());
+            auto srcBlob = plugin->getBlob(outputNodeName);
+            auto operandType = modelInfo->getOperandType(outIndex);
+            uint32_t expectedLength = srcBlob->byteSize();
+            uint32_t rActualLength = 0;
+            void* destPtr = modelInfo->getBlobFromMemoryPoolOut(request, i, rActualLength);
+            auto outDims = srcBlob->getTensorDesc().getDims();
+            if (operandType == OperandType::TENSOR_BOOL8 ||
+                operandType == OperandType::TENSOR_QUANT8_ASYMM ||
+                operandType == OperandType::TENSOR_QUANT8_SYMM)
+                expectedLength /= 4;  // 8bit expected instead of 32bit
+            if (rActualLength != expectedLength) {
+                ALOGE("%s Invalid length(%d) at outIndex(%d)", __func__, rActualLength, outIndex);
+                // Notify Insufficient Buffer Length to modelInfo
+                modelInfo->updateOutputshapes(i, outDims, false);
+                notify(callback, ErrorStatus::OUTPUT_INSUFFICIENT_SIZE,
+                       modelInfo->getOutputShapes(), kNoTiming);
+                return;
+            } else {
+                modelInfo->updateOutputshapes(i, outDims);
+            }
+            switch (operandType) {
+                case OperandType::TENSOR_INT32:
+                case OperandType::TENSOR_FLOAT32: {
+                    std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(),
+                                srcBlob->byteSize());
+                    break;
+                }
+                case OperandType::TENSOR_BOOL8: {
+                    floatToUint8(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr,
+                                 srcBlob->size());
+                    break;
+                }
+                case OperandType::TENSOR_QUANT8_ASYMM: {
+                    floatToUint8(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr,
+                                 srcBlob->size());
+                    break;
+                }
+                case OperandType::TENSOR_QUANT8_SYMM: {
+                    floatToint8(srcBlob->buffer().as<float*>(), (int8_t*)destPtr, srcBlob->size());
+                    break;
+                }
+                default:
+                    std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(),
+                                srcBlob->byteSize());
+                    break;
+            }
         }
-        ALOGD("Output index: %d layername : %s", outIndex, outputNodeName.c_str());
-        auto srcBlob = plugin->getBlob(outputNodeName);
-        auto operandType = modelInfo->getOperandType(outIndex);
-        uint32_t expectedLength = srcBlob->byteSize();
-        uint32_t rActualLength = 0;
-        void* destPtr = modelInfo->getBlobFromMemoryPoolOut(request, i, rActualLength);
-        auto outDims = srcBlob->getTensorDesc().getDims();
-        if (operandType == OperandType::TENSOR_BOOL8 ||
-            operandType == OperandType::TENSOR_QUANT8_ASYMM ||
-            operandType == OperandType::TENSOR_QUANT8_SYMM)
-            expectedLength /= 4;  // 8bit expected instead of 32bit
-        if (rActualLength != expectedLength) {
-            ALOGE("%s Invalid length(%d) at outIndex(%d)", __func__, rActualLength, outIndex);
-            // Notify Insufficient Buffer Length to modelInfo
-            modelInfo->updateOutputshapes(i, outDims, false);
-            notify(callback, ErrorStatus::OUTPUT_INSUFFICIENT_SIZE, modelInfo->getOutputShapes(),
-                   kNoTiming);
-            return;
-        } else {
-            modelInfo->updateOutputshapes(i, outDims);
-        }
-        switch (operandType) {
-            case OperandType::TENSOR_INT32:
-            case OperandType::TENSOR_FLOAT32: {
-                std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(),
-                            srcBlob->byteSize());
-                break;
-            }
-            case OperandType::TENSOR_BOOL8: {
-                floatToUint8(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr, srcBlob->size());
-                break;
-            }
-            case OperandType::TENSOR_QUANT8_ASYMM: {
-                floatToUint8(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr, srcBlob->size());
-                break;
-            }
-            case OperandType::TENSOR_QUANT8_SYMM: {
-                floatToint8(srcBlob->buffer().as<float*>(), (int8_t*)destPtr, srcBlob->size());
-                break;
-            }
-            default:
-                std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(),
-                            srcBlob->byteSize());
-                break;
-        }
-        // writeBufferToFile(outputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
+    } catch (const std::exception& ex) {
+        ALOGE("%s Exception !!! %s", __func__, ex.what());
     }
 
     if (!modelInfo->updateRequestPoolInfos()) {
@@ -229,81 +232,86 @@ static std::tuple<ErrorStatus, hidl_vec<V1_2::OutputShape>, Timing> executeSynch
         ALOGE("Failed to set runtime pool info from HIDL memories");
         return {ErrorStatus::GENERAL_FAILURE, {}, kNoTiming};
     }
+    try {
+        for (size_t i = 0; i < request.inputs.size(); i++) {
+            auto inIndex = modelInfo->getModelInputIndex(i);
+            auto srcBlob = modelInfo->getBlobFromMemoryPoolIn(request, i);
 
-    for (size_t i = 0; i < request.inputs.size(); i++) {
-        auto inIndex = modelInfo->getModelInputIndex(i);
-        auto srcBlob = modelInfo->getBlobFromMemoryPoolIn(request, i);
-
-        const std::string& inputNodeName = ngraphNw->getNodeName(inIndex);
-        if (inputNodeName == "") {
-            ALOGD("Ignorning input at index(%d), since it is invalid", inIndex);
-            continue;
+            const std::string& inputNodeName = ngraphNw->getNodeName(inIndex);
+            if (inputNodeName == "") {
+                ALOGD("Ignorning input at index(%d), since it is invalid", inIndex);
+                continue;
+            }
+            ALOGD("Input index: %d layername : %s", inIndex, inputNodeName.c_str());
+            auto destBlob = plugin->getBlob(inputNodeName);
+            uint8_t* dest = destBlob->buffer().as<uint8_t*>();
+            uint8_t* src = srcBlob->buffer().as<uint8_t*>();
+            std::memcpy(dest, src, srcBlob->byteSize());
         }
-        ALOGD("Input index: %d layername : %s", inIndex, inputNodeName.c_str());
-        auto destBlob = plugin->getBlob(inputNodeName);
-        uint8_t* dest = destBlob->buffer().as<uint8_t*>();
-        uint8_t* src = srcBlob->buffer().as<uint8_t*>();
-        std::memcpy(dest, src, srcBlob->byteSize());
-        // writeBufferToFile(inputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
-    }
 
-    ALOGD("Run");
+        ALOGD("Run");
 
-    if (measure == MeasureTiming::YES) deviceStart = now();
-    plugin->infer();
-    if (measure == MeasureTiming::YES) deviceEnd = now();
+        if (measure == MeasureTiming::YES) deviceStart = now();
+        plugin->infer();
+        if (measure == MeasureTiming::YES) deviceEnd = now();
 
-    for (size_t i = 0; i < request.outputs.size(); i++) {
-        auto outIndex = modelInfo->getModelOutputIndex(i);
-        ALOGI("OutputIndex: %d", outIndex);
-        const std::string& outputNodeName = ngraphNw->getNodeName(outIndex);
-        if (outputNodeName == "") {
-            ALOGD("Ignorning output at index(%d), since it is invalid", outIndex);
-            continue;
+        for (size_t i = 0; i < request.outputs.size(); i++) {
+            auto outIndex = modelInfo->getModelOutputIndex(i);
+            ALOGI("OutputIndex: %d", outIndex);
+            const std::string& outputNodeName = ngraphNw->getNodeName(outIndex);
+            if (outputNodeName == "") {
+                ALOGD("Ignorning output at index(%d), since it is invalid", outIndex);
+                continue;
+            }
+            ALOGD("Output index: %d layername : %s", outIndex, outputNodeName.c_str());
+            auto srcBlob = plugin->getBlob(outputNodeName);
+            auto operandType = modelInfo->getOperandType(outIndex);
+            uint32_t expectedLength = srcBlob->byteSize();
+            uint32_t rActualLength = 0;
+            void* destPtr = modelInfo->getBlobFromMemoryPoolOut(request, i, rActualLength);
+            auto outDims = srcBlob->getTensorDesc().getDims();
+            if (operandType == OperandType::TENSOR_BOOL8 ||
+                operandType == OperandType::TENSOR_QUANT8_ASYMM ||
+                operandType == OperandType::TENSOR_QUANT8_SYMM)
+                expectedLength /= 4;  // 8bit expected instead of 32bit
+            if (rActualLength != expectedLength) {
+                ALOGE("%s Invalid length(%d) at outIndex(%d)", __func__, rActualLength, outIndex);
+                // Notify Insufficient Buffer Length to modelInfo
+                modelInfo->updateOutputshapes(i, outDims, false);
+                return {ErrorStatus::OUTPUT_INSUFFICIENT_SIZE, modelInfo->getOutputShapes(),
+                        kNoTiming};
+            } else
+                modelInfo->updateOutputshapes(i, outDims);
+            switch (operandType) {
+                case OperandType::TENSOR_INT32:
+                case OperandType::TENSOR_FLOAT32: {
+                    std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(),
+                                srcBlob->byteSize());
+                    break;
+                }
+                case OperandType::TENSOR_BOOL8: {
+                    floatToUint8(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr,
+                                 srcBlob->size());
+                    break;
+                }
+                case OperandType::TENSOR_QUANT8_ASYMM: {
+                    floatToUint8(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr,
+                                 srcBlob->size());
+                    break;
+                }
+                case OperandType::TENSOR_QUANT8_SYMM: {
+                    floatToint8(srcBlob->buffer().as<float*>(), (int8_t*)destPtr, srcBlob->size());
+                    break;
+                }
+                default:
+                    std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(),
+                                srcBlob->byteSize());
+                    break;
+            }
         }
-        ALOGD("Output index: %d layername : %s", outIndex, outputNodeName.c_str());
-        auto srcBlob = plugin->getBlob(outputNodeName);
-        auto operandType = modelInfo->getOperandType(outIndex);
-        uint32_t expectedLength = srcBlob->byteSize();
-        uint32_t rActualLength = 0;
-        void* destPtr = modelInfo->getBlobFromMemoryPoolOut(request, i, rActualLength);
-        auto outDims = srcBlob->getTensorDesc().getDims();
-        if (operandType == OperandType::TENSOR_BOOL8 ||
-            operandType == OperandType::TENSOR_QUANT8_ASYMM ||
-            operandType == OperandType::TENSOR_QUANT8_SYMM)
-            expectedLength /= 4;  // 8bit expected instead of 32bit
-        if (rActualLength != expectedLength) {
-            ALOGE("%s Invalid length(%d) at outIndex(%d)", __func__, rActualLength, outIndex);
-            // Notify Insufficient Buffer Length to modelInfo
-            modelInfo->updateOutputshapes(i, outDims, false);
-            return {ErrorStatus::OUTPUT_INSUFFICIENT_SIZE, modelInfo->getOutputShapes(), kNoTiming};
-        } else
-            modelInfo->updateOutputshapes(i, outDims);
-        switch (operandType) {
-            case OperandType::TENSOR_INT32:
-            case OperandType::TENSOR_FLOAT32: {
-                std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(),
-                            srcBlob->byteSize());
-                break;
-            }
-            case OperandType::TENSOR_BOOL8: {
-                floatToUint8(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr, srcBlob->size());
-                break;
-            }
-            case OperandType::TENSOR_QUANT8_ASYMM: {
-                floatToUint8(srcBlob->buffer().as<float*>(), (uint8_t*)destPtr, srcBlob->size());
-                break;
-            }
-            case OperandType::TENSOR_QUANT8_SYMM: {
-                floatToint8(srcBlob->buffer().as<float*>(), (int8_t*)destPtr, srcBlob->size());
-                break;
-            }
-            default:
-                std::memcpy((uint8_t*)destPtr, srcBlob->buffer().as<uint8_t*>(),
-                            srcBlob->byteSize());
-                break;
-        }
-        // writeBufferToFile(outputNodeName, srcBlob->buffer().as<float*>(), srcBlob->size());
+    } catch (const std::exception& ex) {
+        ALOGE("%s Exception !!! %s", __func__, ex.what());
+        return {ErrorStatus::GENERAL_FAILURE, {}, kNoTiming};
     }
 
     if (!modelInfo->updateRequestPoolInfos()) {
