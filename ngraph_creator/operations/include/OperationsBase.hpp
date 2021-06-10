@@ -73,6 +73,12 @@ protected:
                     input = createConstNode(elementType, toNgraphShape(operandDims), operandValues);
                     break;
                 }
+                case OperandType::TENSOR_FLOAT16: {
+                    elementType = ngraph::element::f16;
+                    auto operandValues = sModelInfo->GetConstVecOperand<float>(operandIndex);
+                    input = createConstNode(elementType, toNgraphShape(operandDims), operandValues);
+                    break;
+                }
                 default: {
                     ALOGE("Unsupported Tensor type %s", __func__);
                     return nullptr;
@@ -85,6 +91,10 @@ protected:
 
         if (operandType == OperandType::TENSOR_QUANT8_ASYMM && dequantize) {
             input = DequantizeNode(input, operandIndex, ngraph::element::f32);
+        }
+
+        if (operandType == OperandType::TENSOR_FLOAT16) {
+            input = std::make_shared<ngraph::opset3::Convert>(input, ngraph::element::f32);
         }
 
         return input;

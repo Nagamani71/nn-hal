@@ -105,6 +105,14 @@ static void floatToint8(const float* src, int8_t* dst, size_t size) {
     }
 }
 
+static void floatTofloat16(const float* src, _Float16* dst, size_t size) {
+    for (uint32_t i = 0; i < size; ++i) {
+        dst[i] = static_cast<_Float16>(src[i]);
+        ALOGV("%s input: %f output: %d ", __func__, src[i], dst[i]);
+    }
+}
+
+
 template <typename T_IExecutionCallback>
 void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedModel* preparedModel,
                   time_point driverStart, const sp<T_IExecutionCallback>& callback) {
@@ -159,6 +167,8 @@ void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedMod
             operandType == OperandType::TENSOR_QUANT8_ASYMM ||
             operandType == OperandType::TENSOR_QUANT8_SYMM)
             expectedLength /= 4;  // 8bit expected instead of 32bit
+        if (operandType == OperandType::TENSOR_FLOAT16)
+            expectedLength /= 2;  // 16bit expected instead of 32bit
         if (rActualLength != expectedLength) {
             ALOGE("%s Invalid length(%d) at outIndex(%d)", __func__, rActualLength, outIndex);
             // Notify Insufficient Buffer Length to modelInfo
@@ -186,6 +196,10 @@ void asyncExecute(const Request& request, MeasureTiming measure, BasePreparedMod
             }
             case OperandType::TENSOR_QUANT8_SYMM: {
                 floatToint8(srcBlob->buffer().as<float*>(), (int8_t*)destPtr, srcBlob->size());
+                break;
+            }
+            case OperandType::TENSOR_FLOAT16: {
+                floatTofloat16(srcBlob->buffer().as<float*>(), (_Float16*)destPtr, srcBlob->size());
                 break;
             }
             default:
@@ -269,6 +283,8 @@ static std::tuple<ErrorStatus, hidl_vec<V1_2::OutputShape>, Timing> executeSynch
             operandType == OperandType::TENSOR_QUANT8_ASYMM ||
             operandType == OperandType::TENSOR_QUANT8_SYMM)
             expectedLength /= 4;  // 8bit expected instead of 32bit
+        if (operandType == OperandType::TENSOR_FLOAT16)
+            expectedLength /= 2;  // 16bit expected instead of 32bit
         if (rActualLength != expectedLength) {
             ALOGE("%s Invalid length(%d) at outIndex(%d)", __func__, rActualLength, outIndex);
             // Notify Insufficient Buffer Length to modelInfo
@@ -293,6 +309,10 @@ static std::tuple<ErrorStatus, hidl_vec<V1_2::OutputShape>, Timing> executeSynch
             }
             case OperandType::TENSOR_QUANT8_SYMM: {
                 floatToint8(srcBlob->buffer().as<float*>(), (int8_t*)destPtr, srcBlob->size());
+                break;
+            }
+            case OperandType::TENSOR_FLOAT16: {
+                floatTofloat16(srcBlob->buffer().as<float*>(), (_Float16*)destPtr, srcBlob->size());
                 break;
             }
             default:

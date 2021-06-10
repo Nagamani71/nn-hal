@@ -67,6 +67,9 @@ bool NnapiModelInfo::initializeRunTimeOperandInfo() {
             case OperandType::TENSOR_QUANT8_SYMM:
                 to.type = from.type;
                 break;
+            case OperandType::TENSOR_FLOAT16:
+                to.type = from.type;
+                break;
             default:
                 ALOGE("wrong operand type %d", from.type);
                 return false;
@@ -294,6 +297,21 @@ Blob::Ptr NnapiModelInfo::GetInOutOperandAsBlob(RunTimeOperandInfo& op, const ui
         } else {
             InferenceEngine::TBlob<int8_t>::Ptr blob =
                 std::make_shared<InferenceEngine::TBlob<int8_t>>(td, (int8_t*)buf, len);
+            return blob;
+        }
+    } else if (op.type == OperandType::TENSOR_FLOAT16) {
+        ALOGV("check if tensors of type TENSOR_FLOAT16 supported");
+        InferenceEngine::TensorDesc td(InferenceEngine::Precision::FP16, toDims(op.dimensions),
+                                       InferenceEngine::Layout::ANY);
+        if (buf == nullptr) {
+            ALOGD("TENSOR_FLOAT16 buf is NULL !!!!!!!!!!!!!!!");
+            InferenceEngine::TBlob<float>::Ptr blob =
+                std::make_shared<InferenceEngine::TBlob<float>>(td);
+            blob->allocate();
+            return blob;
+        } else {
+            InferenceEngine::TBlob<float>::Ptr blob =
+                std::make_shared<InferenceEngine::TBlob<float>>(td, (float*)buf, len);
             return blob;
         }
     }
@@ -555,11 +573,13 @@ template int NnapiModelInfo::GetConstOperand<int>(unsigned int);
 template float NnapiModelInfo::GetConstOperand<float>(unsigned int);
 template uint8_t NnapiModelInfo::GetConstOperand<uint8_t>(unsigned int);
 template int8_t NnapiModelInfo::GetConstOperand<int8_t>(unsigned int);
+// template int16_t NnapiModelInfo::GetConstOperand<int16_t>(unsigned int);
 template uint32_t NnapiModelInfo::GetConstOperand<uint32_t>(unsigned int);
 template int NnapiModelInfo::GetConstFromBuffer<int>(unsigned char const*, unsigned int);
 template float NnapiModelInfo::GetConstFromBuffer<float>(unsigned char const*, unsigned int);
 template uint8_t NnapiModelInfo::GetConstFromBuffer<uint8_t>(unsigned char const*, unsigned int);
 template int8_t NnapiModelInfo::GetConstFromBuffer<int8_t>(unsigned char const*, unsigned int);
+// template int16_t NnapiModelInfo::GetConstFromBuffer<int16_t>(unsigned char const*, unsigned int);
 template uint32_t NnapiModelInfo::GetConstFromBuffer<uint32_t>(unsigned char const*, unsigned int);
 }  // namespace nnhal
 }  // namespace neuralnetworks

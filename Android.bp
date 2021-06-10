@@ -99,6 +99,10 @@ cc_library_shared {
         "libngraph_creator",
     ],
 
+    defaults: [
+       "neuralnetworks_defaults"
+    ]
+
 }
 
 //##############################################################
@@ -141,4 +145,8 @@ cc_binary {
     ],
 
     compile_multilib: "64",
+
+    defaults: [
+       "neuralnetworks_defaults"
+    ]
 }

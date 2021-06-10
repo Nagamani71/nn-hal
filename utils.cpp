@@ -505,6 +505,9 @@ int sizeOfData(OperandType type, std::vector<uint32_t> dims) {
         case OperandType::INT32:
             size = 1;
             break;
+        case OperandType::TENSOR_FLOAT16:
+            size = 2;
+            break;
 
         default:
             size = 0;

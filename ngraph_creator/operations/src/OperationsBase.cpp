@@ -59,6 +59,9 @@ void OperationsBase::connectOperationToGraph() {
     if (op.type == OperandType::TENSOR_QUANT8_ASYMM) {
         outputNode = QuantizeNode(outputNode, mDefaultOutputIndex, ngraph::element::u8);
     }
+    if (op.type == OperandType::TENSOR_FLOAT16) {
+        outputNode = std::make_shared<ngraph::opset3::Convert>(outputNode, ngraph::element::f32);
+    }
     if (op.lifetime == OperandLifeTime::MODEL_OUTPUT) {
         addResultNode(mDefaultOutputIndex, outputNode);
     }

@@ -12,14 +12,16 @@ Add::Add(int operationIndex) : OperationsBase(operationIndex) {
 bool Add::validate() {
     // check output type
     if (!checkOutputOperandType(0, (int32_t)OperandType::TENSOR_FLOAT32) &&
-        !checkOutputOperandType(0, (int32_t)OperandType::TENSOR_QUANT8_ASYMM)) {
+        !checkOutputOperandType(0, (int32_t)OperandType::TENSOR_QUANT8_ASYMM) &&
+        !checkOutputOperandType(0, (int32_t)OperandType::TENSOR_FLOAT16)) {
         return false;
     }
 
     // Check all input types
     for (int i = 0; i <= 1; i++) {
         if (!checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT32) &&
-            !checkInputOperandType(i, (int32_t)OperandType::TENSOR_QUANT8_ASYMM))
+            !checkInputOperandType(i, (int32_t)OperandType::TENSOR_QUANT8_ASYMM) &&
+            !checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT16))
             return false;
     }
 
