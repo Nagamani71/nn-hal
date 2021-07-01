@@ -17,12 +17,15 @@ bool Conv_2d::validate() {
         !checkOutputOperandType(0, (int32_t)OperandType::TENSOR_QUANT8_ASYMM))
         return false;
 
-    for (int i = 0; i < 2; i++) {
-        // Check input/filter operands(0/1) are of type TENSOR_FLOAT32/TENSOR_QUANT8_ASYMM
-        if (!checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT32) &&
-            !checkInputOperandType(i, (int32_t)OperandType::TENSOR_QUANT8_ASYMM))
-            return false;
-    }
+    // Check input/filter operands(0/1) are of type TENSOR_FLOAT32/TENSOR_QUANT8_ASYMM
+    if (!checkInputOperandType(0, (int32_t)OperandType::TENSOR_FLOAT32) &&
+        !checkInputOperandType(0, (int32_t)OperandType::TENSOR_QUANT8_ASYMM))
+        return false;
+    if (!checkInputOperandType(1, (int32_t)OperandType::TENSOR_FLOAT32) &&
+        !checkInputOperandType(1, (int32_t)OperandType::TENSOR_QUANT8_ASYMM) &&
+        !checkInputOperandType(1, (int32_t)OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL))
+        return false;
+
     // Check bias type
     if (!checkInputOperandType(2, (int32_t)OperandType::TENSOR_FLOAT32) &&
         !checkInputOperandType(2, (int32_t)OperandType::TENSOR_INT32))
@@ -38,6 +41,16 @@ bool Conv_2d::validate() {
     if (!isValidInputTensor(0) || !isValidInputTensor(1)) {
         ALOGE("%s Invalid dimensions for input or filter", __func__);
         return false;
+    }
+
+    if(checkInputOperandType(1, (int32_t)OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL)) {
+        const auto& operandIndex = sModelInfo->getOperationInput(mNnapiOperationIndex, 1);
+        const auto& operand = sModelInfo->getOperand(operandIndex);
+        ALOGD("test: %d", operand.extraParams.channelQuant().channelDim);
+        if (operand.extraParams.channelQuant().channelDim != 0) {
+            ALOGD("testing channelDim value");
+            return false;
+        }
     }
 
     const auto& inputsSize = sModelInfo->getOperationInputsSize(mNnapiOperationIndex);
@@ -224,7 +237,8 @@ std::shared_ptr<ngraph::Node> Conv_2d::createNode() {
     filterNode = getInputNode(1);
     biasNode = getInputNode(2);
 
-    if (checkInputOperandType(0, (int32_t)OperandType::TENSOR_QUANT8_ASYMM)) {
+    if (checkInputOperandType(0, (int32_t)OperandType::TENSOR_QUANT8_ASYMM) ||
+        checkInputOperandType(0, (int32_t)OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL)) {
         // for quant type inputs, bias is of type TENSOR_INT32. For TENSOR_INT32 type,
         // dequantization is not applied during node creation
         biasNode = DequantizeNode(biasNode, biasIndex, ngraph::element::f32);
