@@ -93,20 +93,21 @@ protected:
 
         if (operandType == OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL) {
             const auto& operand = sModelInfo->getOperand(operandIndex);
-            ngraph::AxisVector order, order1;
-            order = {3, 2, 1, 0};
-            const auto order_node =
-                ngraph::opset3::Constant::create(ngraph::element::i64, ngraph::Shape{order.size()}, order);
-            auto temp = std::make_shared<ngraph::opset3::Transpose>(input, order_node);
+            input = transpose(NHWC_NCHW, input);
             vec<float> scales = operand.extraParams.channelQuant().scales;
             const auto vec_node =
                 ngraph::opset3::Constant::create(ngraph::element::f32, ngraph::Shape{scales.size()}, scales);
-            auto test = std::make_shared<ngraph::opset3::Convert>(temp, ngraph::element::f32);
-            auto test1 = std::make_shared<ngraph::opset3::Multiply>(test, vec_node);
-            order1 = {0,1,2,3};
-            const auto order_node1 =
-                ngraph::opset3::Constant::create(ngraph::element::i64, ngraph::Shape{order.size()}, order);
-            input = std::make_shared<ngraph::opset3::Transpose>(test1, order_node1);
+            int size = scales.size();
+            std::vector<int32_t> shape = {size, 1, 1, 1};
+            auto shapeNode = createConstNode(ngraph::element::i32, ngraph::Shape{shape.size()}, shape);
+
+            auto res = std::make_shared<ngraph::opset3::Reshape>(vec_node, shapeNode, true);
+
+            input = std::make_shared<ngraph::opset3::Convert>(input, ngraph::element::f32);
+
+            auto test1 = std::make_shared<ngraph::opset3::Multiply>(input, res);
+
+            input = transpose(NCHW_NHWC, input);
         }
 
         return input;
