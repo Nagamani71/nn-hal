@@ -220,10 +220,10 @@ std::shared_ptr<ngraph::Node> Depthwise_Conv_2d::createNode() {
         }
 
         if (padding_scheme == 1) {
-            calculateExplicitPadding(input_width, stride_width, filter_width, 1, &padding_left,
-                                     &padding_right);
-            calculateExplicitPadding(input_height, stride_height, filter_height, 1, &padding_top,
-                                     &padding_bottom);
+            calculateExplicitPadding(input_width, stride_width, dilation_height_factor,
+                                     filter_width, 1, &padding_left, &padding_right);
+            calculateExplicitPadding(input_height, stride_height, dilation_height_factor,
+                                     filter_height, 1, &padding_top, &padding_bottom);
             auto_pad = ngraph::op::PadType::SAME_UPPER;
         } else if (padding_scheme == 2) {
             auto_pad = ngraph::op::PadType::VALID;

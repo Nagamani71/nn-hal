@@ -141,9 +141,9 @@ std::shared_ptr<ngraph::Node> Max_Pool_2d::createNode() {
         }
 
         if (padding_scheme == 1) {
-            calculateExplicitPadding(input_width, stride_width, filter_width, 1, &padding_left,
+            calculateExplicitPadding(input_width, stride_width, 1, filter_width, 1, &padding_left,
                                      &padding_right);
-            calculateExplicitPadding(input_height, stride_height, filter_height, 1, &padding_top,
+            calculateExplicitPadding(input_height, stride_height, 1, filter_height, 1, &padding_top,
                                      &padding_bottom);
             auto_pad = ngraph::op::PadType::SAME_UPPER;
         } else if (padding_scheme == 2) {

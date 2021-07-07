@@ -44,17 +44,24 @@ static inline std::shared_ptr<ngraph::Node> applyActivation(std::shared_ptr<ngra
     return activationNode;
 }
 
-static inline void calculateExplicitPadding(int32_t in_size, int32_t stride, int32_t filter_size,
+static inline void calculateExplicitPadding(int32_t in_size, int32_t stride,
+                                            int32_t dilation_factor, int32_t filter_size,
                                             int32_t padding_implicit, int32_t* padding_head,
-                                            int32_t* padding_tail) {
+                                            int32_t* padding_tail, bool isTransposeConv = false) {
     *padding_head = 0;
     *padding_tail = 0;
 
+    int32_t effective_filter_size = (filter_size - 1) * dilation_factor + 1;
+
     if (padding_implicit == 1) {
         int32_t out_size = (in_size + stride - 1) / stride;
-        int32_t tmp = (out_size - 1) * stride + filter_size;
+        int32_t tmp = (out_size - 1) * stride + effective_filter_size;
         if (tmp > in_size) {
             *padding_head = (tmp - in_size) / 2;
+            *padding_tail = (tmp - in_size) - *padding_head;
+        }
+        // For transpose conv, make padding tail fit tightly to the end of the last stride.
+        if (isTransposeConv) {
             *padding_tail = (tmp - in_size) - *padding_head;
         }
     }
