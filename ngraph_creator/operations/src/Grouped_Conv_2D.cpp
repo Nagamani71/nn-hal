@@ -200,7 +200,7 @@ std::shared_ptr<ngraph::Node> Grouped_Conv_2D::createNode() {
     }
 
     // OpenVino expects filter in OIHW format
-    filterNode = transpose(IHWO_OIHW, filterNode);
+    filterNode = transpose(OHWI_OIHW, filterNode);
     if (mNgraphNodes->isForcedNchw(inputIndex)) {
         if (useNchw) {
             ALOGI("%s Forced NCHW done already but NCHW flag set at operationIndex %d", __func__,
@@ -224,10 +224,8 @@ std::shared_ptr<ngraph::Node> Grouped_Conv_2D::createNode() {
 
     if (groups != 1) {
         std::vector<size_t> shape(&filterNode->get_shape()[0], &filterNode->get_shape()[0] + 4);
-        ALOGD("groups is %d ", groups);
-        ALOGD("input_channel is %d ", input_channel);
-        shape[1] /= input_channel;
-        shape.insert(shape.begin(), input_channel);
+        shape[0] /= groups;
+        shape.insert(shape.begin(), groups);
         ALOGD("%s final filternode shape %d", __func__, shape.size());
 
         auto shapeNode = createConstNode(ngraph::element::i32, ngraph::Shape{shape.size()}, shape);
