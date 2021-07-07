@@ -63,6 +63,8 @@ std::shared_ptr<OperationsBase> OperationsFactory::getOperation(
             return std::make_shared<Greater_Equal>(operationIndex);
         case OperationType::GROUPED_CONV_2D:
             return std::make_shared<Grouped_Conv_2D>(operationIndex);
+        case OperationType::INSTANCE_NORMALIZATION:
+            return std::make_shared<Instance_Normalization>(operationIndex);
         case OperationType::L2_NORMALIZATION:
             return std::make_shared<L2_Normalization>(operationIndex);
         case OperationType::LSTM:

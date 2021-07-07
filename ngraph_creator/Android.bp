@@ -33,6 +33,7 @@ cc_library_static {
         "operations/src/Greater.cpp",
         "operations/src/Greater_Equal.cpp",
         "operations/src/Grouped_Conv_2D.cpp",
+        "operations/src/Instance_Normalization.cpp",
         "operations/src/L2_Normalization.cpp",
         "operations/src/LSTM.cpp",
         "operations/src/Less.cpp",

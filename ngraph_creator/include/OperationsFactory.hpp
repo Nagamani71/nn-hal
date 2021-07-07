@@ -23,6 +23,7 @@
 #include <Greater.hpp>
 #include <Greater_Equal.hpp>
 #include <Grouped_Conv_2D.hpp>
+#include <Instance_Normalization.hpp>
 #include <L2_Normalization.hpp>
 #include <LSTM.hpp>
 #include <Less.hpp>

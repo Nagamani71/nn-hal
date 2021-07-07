@@ -97,6 +97,7 @@ shared_library("intel_nnhal") {
     "ngraph_creator/operations/src/Greater_Equal.cpp",
     "ngraph_creator/operations/src/Greater.cpp",
     "ngraph_creator/operations/src/Grouped_Conv_2D.cpp",
+    "ngraph_creator/operations/src/Instance_Normalization.cpp",
     "ngraph_creator/operations/src/L2_Normalization.cpp",
     "ngraph_creator/operations/src/Less_Equal.cpp",
     "ngraph_creator/operations/src/Less.cpp",
