@@ -5,7 +5,8 @@ namespace hardware {
 namespace neuralnetworks {
 namespace nnhal {
 
-Instance_Normalization::Instance_Normalization(int operationIndex) : OperationsBase(operationIndex) {
+Instance_Normalization::Instance_Normalization(int operationIndex)
+    : OperationsBase(operationIndex) {
     mDefaultOutputIndex = sModelInfo->getOperationOutput(mNnapiOperationIndex, 0);
 }
 
@@ -44,13 +45,15 @@ std::shared_ptr<ngraph::Node> Instance_Normalization::createNode() {
 
     if (!useNchw)  // No conversion needed if useNchw set
         input = transpose(NHWC_NCHW, input);
-    
+
     auto gamma_scale_node = createConstNode(ngraph::element::f32, {}, convertToVector(gamma_scale));
     auto beta_node = createConstNode(ngraph::element::f32, {}, convertToVector(beta));
 
     auto mvn = std::make_shared<ngraph::opset3::MVN>(input, false, true, epsilon);
-    auto inputShape =  std::make_shared<ngraph::opset3::Constant>(ngraph::element::i32, input->get_shape());
-    auto axis = std::make_shared<ngraph::opset3::Constant>(ngraph::element::i32, ngraph::Shape{1}, 1);
+    auto inputShape =
+        std::make_shared<ngraph::opset3::Constant>(ngraph::element::i32, input->get_shape());
+    auto axis =
+        std::make_shared<ngraph::opset3::Constant>(ngraph::element::i32, ngraph::Shape{1}, 1);
     // auto scale = std::make_shared<ngraph::op::v3::Broadcast>(
     //                     gamma_scale_node,
     //                     inputShape,
@@ -62,7 +65,7 @@ std::shared_ptr<ngraph::Node> Instance_Normalization::createNode() {
 
     std::shared_ptr<ngraph::Node> outputNode;
 
-    outputNode =  std::make_shared<ngraph::opset3::Multiply>(mvn, gamma_scale_node);
+    outputNode = std::make_shared<ngraph::opset3::Multiply>(mvn, gamma_scale_node);
     outputNode = std::make_shared<ngraph::opset3::Add>(outputNode, beta_node);
 
     if (!useNchw) outputNode = transpose(NCHW_NHWC, outputNode);

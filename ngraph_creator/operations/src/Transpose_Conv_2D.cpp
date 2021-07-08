@@ -198,39 +198,30 @@ std::shared_ptr<ngraph::Node> Transpose_Conv_2D::createNode() {
 
     // OpenVino expects filter in OIHW format
     filterNode = transpose(IHWO_OIHW, filterNode);
-    if (mNgraphNodes->isForcedNchw(inputIndex)) {
-        if (useNchw) {
-            ALOGI("%s Forced NCHW done already but NCHW flag set at operationIndex %d", __func__,
-                  mNnapiOperationIndex);
-            inputNode = transpose(NCHW_NHWC, inputNode);
-            mNgraphNodes->setForcedNchw(mDefaultOutputIndex, false);
-        } else {
-            // Already forced NCHW, propogate the flag
-            mNgraphNodes->setForcedNchw(mDefaultOutputIndex, true);
-        }
-    } else if (!useNchw) {  // No conversion needed if useNchw set
+
+    if (!useNchw) {  // No conversion needed if useNchw set
         inputNode = transpose(NHWC_NCHW, inputNode);
-        mNgraphNodes->setForcedNchw(mDefaultOutputIndex, true);
-        ALOGD("%s Forced NCHW conversion at operationIndex %d", __func__, mNnapiOperationIndex);
     }
 
     strides = {(size_t)stride_height, (size_t)stride_width};
     pads_begin = {padding_top, padding_left};
     pads_end = {padding_bottom, padding_right};
+    // pads_begin = {0, 0};
+    // pads_end = {0, 0};
     dilations = {(size_t)dilation_height_factor, (size_t)dilation_width_factor};
 
     std::shared_ptr<ngraph::Node> transposeConvNode;
-    std::vector<std::ptrdiff_t> test = {-1, -1};
+    std::vector<std::ptrdiff_t> test = {1, 1};
 
     // if (outputShape == nullptr)
-    transposeConvNode = std::make_shared<ngraph::opset3::ConvolutionBackpropData>(
-        inputNode, filterNode, ngraph::Strides(strides), ngraph::CoordinateDiff(pads_begin),
-        ngraph::CoordinateDiff(pads_end), ngraph::Strides(dilations), auto_pad);
+        transposeConvNode = std::make_shared<ngraph::opset3::ConvolutionBackpropData>(
+            inputNode, filterNode, ngraph::Strides(strides), ngraph::CoordinateDiff(pads_begin),
+            ngraph::CoordinateDiff(pads_end), ngraph::Strides(dilations));
     // else
     //     transposeConvNode = std::make_shared<ngraph::opset3::ConvolutionBackpropData>(
-    //     inputNode, filterNode, outputShape, ngraph::Strides(strides),
-    //     ngraph::CoordinateDiff(pads_begin), ngraph::CoordinateDiff(pads_end),
-    //     ngraph::Strides(dilations), auto_pad);
+    //         inputNode, filterNode, outputShape, ngraph::Strides(strides),
+    //         ngraph::CoordinateDiff(pads_begin), ngraph::CoordinateDiff(pads_end),
+    //         ngraph::Strides(dilations));
 
     auto biasDimensions = getInputOperandDimensions(2);
     std::vector<uint32_t> shape(transposeConvNode->get_shape().size(), 1);
@@ -245,11 +236,10 @@ std::shared_ptr<ngraph::Node> Transpose_Conv_2D::createNode() {
 
     if (!useNchw) {
         outputNode = transpose(NCHW_NHWC, outputNode);
-        mNgraphNodes->setForcedNchw(mDefaultOutputIndex, false);
     }
 
-    if (outputShape != nullptr)
-        outputNode = std::make_shared<ngraph::opset3::Reshape>(outputNode, outputShape, true);
+    // if (outputShape != nullptr)
+    //     outputNode = std::make_shared<ngraph::opset3::Reshape>(outputNode, outputShape, true);
 
     return outputNode;
 }
