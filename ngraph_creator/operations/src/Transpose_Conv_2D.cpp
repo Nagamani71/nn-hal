@@ -83,7 +83,7 @@ std::shared_ptr<ngraph::Node> Transpose_Conv_2D::createNode() {
     std::vector<size_t> dilations;
     ngraph::op::PadType auto_pad;
 
-    std::shared_ptr<ngraph::Node> outputShape = nullptr;
+    std::shared_ptr<ngraph::Node> outputShapeNode = nullptr;
 
     const auto& inputDimensions = getInputOperandDimensions(0);
 
@@ -120,7 +120,13 @@ std::shared_ptr<ngraph::Node> Transpose_Conv_2D::createNode() {
     }
 
     if (isImplicit) {
-        outputShape = getInputNode(3);
+        const auto& outputShapeOperandIndex =
+            sModelInfo->getOperationInput(mNnapiOperationIndex, 3);
+
+        auto outputShape = sModelInfo->GetConstVecOperand<int32_t>(outputShapeOperandIndex);
+        size_t spatial_dimensions_size = 2;
+        std::vector<int32_t> spatial_dimensions(spatial_dimensions_size);
+
         padding_scheme = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 4);
 
         stride_width = sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 5);
@@ -133,29 +139,29 @@ std::shared_ptr<ngraph::Node> Transpose_Conv_2D::createNode() {
 
         {
             if (useNchw) {
-                input_width = inputDimensions[3];
-                input_height = inputDimensions[2];
+                spatial_dimensions[0] = outputShape[2];
+                spatial_dimensions[1] = outputShape[3];
             } else {
-                input_width = inputDimensions[2];
-                input_height = inputDimensions[1];
+                spatial_dimensions[0] = outputShape[1];
+                spatial_dimensions[1] = outputShape[2];
             }
         }
 
         if (padding_scheme == 1) {
-            calculateExplicitPadding(input_width, stride_width, 1, filter_width, 1, &padding_left,
-                                     &padding_right, true);
-            calculateExplicitPadding(input_height, stride_height, 1, filter_height, 1, &padding_top,
-                                     &padding_bottom, true);
             auto_pad = ngraph::op::PadType::SAME_UPPER;
         } else if (padding_scheme == 2) {
             auto_pad = ngraph::op::PadType::VALID;
-            padding_left = 0;
-            padding_right = 0;
-            padding_top = 0;
-            padding_bottom = 0;
         } else {
             auto_pad = ngraph::op::PadType::NOTSET;
         }
+
+        outputShapeNode =
+            createConstNode(ngraph::element::i32, {spatial_dimensions_size}, spatial_dimensions);
+
+        padding_left = 0;
+        padding_right = 0;
+        padding_top = 0;
+        padding_bottom = 0;
     }
 
     std::shared_ptr<ngraph::Node> inputNode, filterNode, biasNode;
@@ -206,22 +212,19 @@ std::shared_ptr<ngraph::Node> Transpose_Conv_2D::createNode() {
     strides = {(size_t)stride_height, (size_t)stride_width};
     pads_begin = {padding_top, padding_left};
     pads_end = {padding_bottom, padding_right};
-    // pads_begin = {0, 0};
-    // pads_end = {0, 0};
     dilations = {(size_t)dilation_height_factor, (size_t)dilation_width_factor};
 
     std::shared_ptr<ngraph::Node> transposeConvNode;
-    std::vector<std::ptrdiff_t> test = {1, 1};
 
-    // if (outputShape == nullptr)
+    if (outputShapeNode == nullptr)
         transposeConvNode = std::make_shared<ngraph::opset3::ConvolutionBackpropData>(
             inputNode, filterNode, ngraph::Strides(strides), ngraph::CoordinateDiff(pads_begin),
             ngraph::CoordinateDiff(pads_end), ngraph::Strides(dilations));
-    // else
-    //     transposeConvNode = std::make_shared<ngraph::opset3::ConvolutionBackpropData>(
-    //         inputNode, filterNode, outputShape, ngraph::Strides(strides),
-    //         ngraph::CoordinateDiff(pads_begin), ngraph::CoordinateDiff(pads_end),
-    //         ngraph::Strides(dilations));
+    else
+        transposeConvNode = std::make_shared<ngraph::opset3::ConvolutionBackpropData>(
+            inputNode, filterNode, outputShapeNode, ngraph::Strides(strides),
+            ngraph::CoordinateDiff(pads_begin), ngraph::CoordinateDiff(pads_end),
+            ngraph::Strides(dilations), auto_pad);
 
     auto biasDimensions = getInputOperandDimensions(2);
     std::vector<uint32_t> shape(transposeConvNode->get_shape().size(), 1);
@@ -237,9 +240,6 @@ std::shared_ptr<ngraph::Node> Transpose_Conv_2D::createNode() {
     if (!useNchw) {
         outputNode = transpose(NCHW_NHWC, outputNode);
     }
-
-    // if (outputShape != nullptr)
-    //     outputNode = std::make_shared<ngraph::opset3::Reshape>(outputNode, outputShape, true);
 
     return outputNode;
 }
