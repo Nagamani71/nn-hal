@@ -23,12 +23,6 @@ bool Batch_To_Space::validate() {
     if (!checkInputOperandType(1, (int32_t)OperandType::TENSOR_INT32)) {
         return false;
     }
-    const auto& inputsSize = sModelInfo->getOperationInputsSize(mNnapiOperationIndex);
-    if (inputsSize == 3) {
-        if (!checkInputOperandType(2, (int32_t)OperandType::BOOL)) {
-            return false;
-        }
-    }
 
     // Check input rank
     const auto inputRank = getInputOperandDimensions(0).size();

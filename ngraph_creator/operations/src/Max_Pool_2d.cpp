@@ -28,28 +28,6 @@ bool Max_Pool_2d::validate() {
         return false;
     }
 
-    const auto& inputsSize = sModelInfo->getOperationInputsSize(mNnapiOperationIndex);
-
-    if (inputsSize >= 10 && inputsSize <= 11) {
-        // Checking input types for explicit padding
-        for (int i = 1; i < 10; i++) {
-            if (!checkInputOperandType(i, (int32_t)OperandType::INT32)) return false;
-        }
-
-        if (inputsSize == 11) {
-            if (!checkInputOperandType(10, (int32_t)OperandType::BOOL)) return false;
-        }
-    } else if (inputsSize >= 7 && inputsSize <= 8) {
-        // Checking input types for implicit padding
-        for (int i = 1; i < 7; i++) {
-            if (!checkInputOperandType(i, (int32_t)OperandType::INT32)) return false;
-        }
-
-        if (inputsSize == 8) {
-            if (!checkInputOperandType(7, (int32_t)OperandType::BOOL)) return false;
-        }
-    }
-
     ALOGV("%s PASSED", __func__);
     return true;
 }

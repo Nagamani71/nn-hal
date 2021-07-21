@@ -112,11 +112,14 @@ std::shared_ptr<ngraph::Node> Depthwise_Conv_2d::createNode() {
                 case 14:
                     dilation_height_factor =
                         sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 13);
+                    __attribute__((fallthrough));
                 case 13:
                     dilation_width_factor =
                         sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 12);
+                    __attribute__((fallthrough));
                 case 12:
                     layout = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 11);
+                    __attribute__((fallthrough));
                 default:
                     break;
             }
@@ -153,11 +156,14 @@ std::shared_ptr<ngraph::Node> Depthwise_Conv_2d::createNode() {
                 case 11:
                     dilation_height_factor =
                         sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 10);
+                    __attribute__((fallthrough));
                 case 10:
                     dilation_width_factor =
                         sModelInfo->ParseOperationInput<uint32_t>(mNnapiOperationIndex, 9);
+                    __attribute__((fallthrough));
                 case 9:
                     layout = sModelInfo->ParseOperationInput<uint8_t>(mNnapiOperationIndex, 8);
+                    __attribute__((fallthrough));
                 default:
                     break;
             }

@@ -54,15 +54,6 @@ bool LSTM::validate() {
         if (!checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT32)) return false;
     }
 
-    // check input activation type
-    if (!checkInputOperandType(20, (int32_t)OperandType::INT32)) {
-        return false;
-    }
-    // check input clipping threashold for cell state and output projection layer
-    for (int i = 21; i <= 22; i++) {
-        if (!checkInputOperandType(i, (int32_t)OperandType::FLOAT32)) return false;
-    }
-
     if (inputsSize == 27) {
         for (int i = 23; i <= 26; i++) {
             if (!checkInputOperandType(i, (int32_t)OperandType::TENSOR_FLOAT32)) return false;

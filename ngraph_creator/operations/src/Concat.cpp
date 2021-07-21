@@ -20,9 +20,6 @@ bool Concat::validate() {
     // check concatenation axis
     auto n = sModelInfo->getOperationInputsSize(mNnapiOperationIndex) -
              1;  // 0 ~ n-1: The list of n input tensors
-    if (!checkInputOperandType(n, (int32_t)OperandType::INT32)) {
-        return false;
-    }
     for (int i = 0; i < n; i++) {
         if (!isValidInputTensor(i)) {
             ALOGE("%s Invalid dimensions for input", __func__);

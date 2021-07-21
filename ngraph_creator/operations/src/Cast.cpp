@@ -1,4 +1,5 @@
 #include <Cast.hpp>
+#define LOG_TAG "Cast"
 
 namespace android {
 namespace hardware {

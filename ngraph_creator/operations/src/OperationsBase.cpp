@@ -152,8 +152,11 @@ std::shared_ptr<ngraph::Node> OperationsBase::QuantizeNode(std::shared_ptr<ngrap
     auto convertRound = std::make_shared<ngraph::opset3::Convert>(round, ngraph::element::i32);
     auto sum = std::make_shared<ngraph::opset3::Add>(convertRound, zeroPoint);
     auto data = make_shared<ngraph::opset3::Clamp>(sum, 0, 255);
-
-    auto outputNode = std::make_shared<ngraph::opset3::Convert>(data, quantizeType);
+    std::shared_ptr<ngraph::Node> outputNode;
+    if (data->get_element_type() != quantizeType)
+        outputNode = std::make_shared<ngraph::opset3::Convert>(data, quantizeType);
+    else
+        outputNode = data;
 
     return outputNode;
 }
@@ -175,8 +178,11 @@ std::shared_ptr<ngraph::Node> OperationsBase::DequantizeNode(std::shared_ptr<ngr
     auto diff = std::make_shared<ngraph::opset3::Subtract>(input, zeroPoint);
     auto convertDiff = std::make_shared<ngraph::opset3::Convert>(diff, floatElementType);
     auto mul = std::make_shared<ngraph::opset3::Multiply>(convertDiff, scale);
-
-    auto outputNode = std::make_shared<ngraph::opset3::Convert>(mul, dequantizeType);
+    std::shared_ptr<ngraph::Node> outputNode;
+    if (mul->get_element_type() != dequantizeType)
+        outputNode = std::make_shared<ngraph::opset3::Convert>(mul, dequantizeType);
+    else
+        outputNode = mul;
 
     return outputNode;
 }

@@ -27,12 +27,6 @@ bool L2_Normalization::validate() {
         ALOGE("%s Invalid dimensions size for input(%d)", __func__, inputRank);
         return false;
     }
-    // NN-HAL 1.2 specific optional input
-    if (inputsSize == 2) {
-        if (!checkInputOperandType(1, (int32_t)OperandType::INT32)) {
-            return false;
-        }
-    }
 
     ALOGV("%s PASSED", __func__);
     return true;
