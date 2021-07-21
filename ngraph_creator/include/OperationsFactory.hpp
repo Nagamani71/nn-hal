@@ -66,6 +66,7 @@
 #include <Squeeze.hpp>
 #include <Sub.hpp>
 #include <Tanh.hpp>
+#include <Tile.hpp>
 #include <Topk_V2.hpp>
 #include <Transpose.hpp>
 #include <Transpose_Conv_2D.hpp>
